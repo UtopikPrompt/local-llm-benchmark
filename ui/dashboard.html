@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Local LLM Benchmark</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --panel-2: #273449;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --accent: #38bdf8;
+            --good: #22c55e;
+            --bad: #ef4444;
+            --border: #334155;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+        header {
+            padding: 24px 32px;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+        }
+        header h1 { margin: 0 0 4px; font-size: 22px; }
+        header p { margin: 0; color: var(--muted); font-size: 14px; }
+        .container { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-end;
+            margin-bottom: 20px;
+        }
+        .field { display: flex; flex-direction: column; gap: 4px; }
+        .field label { font-size: 12px; color: var(--muted); }
+        input, select, button {
+            background: var(--panel-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        button {
+            cursor: pointer;
+            background: var(--accent);
+            color: #04223a;
+            font-weight: 600;
+            border: none;
+        }
+        button.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+        button:hover { filter: brightness(1.1); }
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+        .card .value { font-size: 26px; font-weight: 700; color: var(--accent); }
+        .card .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 20px; }
+        .panel h2 { margin: 0 0 12px; font-size: 16px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+        th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+        td .engine { font-weight: 600; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+        .badge.yes { background: rgba(34, 197, 94, 0.15); color: var(--good); }
+        .badge.no { background: rgba(239, 68, 68, 0.15); color: var(--bad); }
+        .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        canvas { max-height: 300px; }
+        .error { color: var(--bad); }
+        .muted { color: var(--muted); }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Local LLM Benchmark</h1>
+        <p>Benchmark local LLM engines (Ollama / LM Studio) — the engine is the variable under test.</p>
+    </header>
+    <div class="container">
+        <div class="controls">
+            <div class="field">
+                <label for="base-url">Engine base URL</label>
+                <input id="base-url" type="text" value="http://localhost:11434" />
+            </div>
+            <div class="field">
+                <label for="model">Model</label>
+                <input id="model" type="text" value="llama3" />
+            </div>
+            <div class="field">
+                <label for="judge-url">Judge URL (optional)</label>
+                <input id="judge-url" type="text" value="http://localhost:11434" />
+            </div>
+            <div class="field">
+                <label for="judge-model">Judge model (optional)</label>
+                <input id="judge-model" type="text" value="llama3" />
+            </div>
+            <button id="run-btn" type="button">Run benchmark</button>
+        </div>
+
+        <div id="error" class="error" hidden></div>
+
+        <div class="cards" id="cards"></div>
+
+        <div class="panel">
+            <h2>Results</h2>
+            <div style="overflow-x:auto">
+                <table id="results-table">
+                    <thead>
+                        <tr>
+                            <th>Engine</th>
+                            <th>Model</th>
+                            <th>Task</th>
+                            <th>Category</th>
+                            <th>TTFT (s)</th>
+                            <th>tok/s</th>
+                            <th>iters/s</th>
+                            <th>Deterministic</th>
+                            <th>Judge</th>
+                            <th>Passed</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="charts">
+            <div class="panel">
+                <h2>Throughput by engine (tok/s)</h2>
+                <canvas id="throughput-chart"></canvas>
+            </div>
+            <div class="panel">
+                <h2>Pass rate by category</h2>
+                <canvas id="passrate-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let throughputChart, passrateChart;
+
+        function showError(message) {
+            const el = document.getElementById("error");
+            el.textContent = message;
+            el.hidden = false;
+        }
+        function clearError() {
+            const el = document.getElementById("error");
+            el.textContent = "";
+            el.hidden = true;
+        }
+
+        async function listModels(baseURL) {
+            try {
+                const res = await fetch(baseURL + "/v1/models");
+                if (!res.ok) return [];
+                const data = await res.json();
+                return (data.data || []).map((m) => m.id);
+            } catch (e) {
+                return [];
+            }
+        }
+
+        async function runBenchmark() {
+            clearError();
+            const baseUrl = document.getElementById("base-url").value.trim();
+            const model = document.getElementById("model").value.trim();
+            const judgeUrl = document.getElementById("judge-url").value.trim();
+            const judgeModel = document.getElementById("judge-model").value.trim();
+
+            if (!baseUrl) {
+                showError("Enter an engine base URL.");
+                return;
+            }
+
+            const btn = document.getElementById("run-btn");
+            btn.disabled = true;
+            btn.textContent = "Running…";
+
+            try {
+                // Validate the engine advertises models.
+                const models = await listModels(baseUrl);
+                if (!models.length) {
+                    showError("The engine returned no models. Is it running?");
+                    return;
+                }
+
+                const res = await fetch("/run", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        base_url: baseUrl,
+                        model: model,
+                        judge_url: judgeUrl || null,
+                        judge_model: judgeModel || null,
+                        trials: 3,
+                    }),
+                });
+
+                if (!res.ok) {
+                    const detail = await res.json().catch(() => "");
+                    showError(detail.detail || res.statusText);
+                    return;
+                }
+
+                const data = await res.json();
+                render(data.rows);
+            } catch (e) {
+                showError(e.message || "Failed to run benchmark.");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Run benchmark";
+            }
+        }
+
+        function render(rows) {
+            // Summary cards.
+            const passed = rows.filter((r) => r.quality_passed).length;
+            const avgTok = rows.length
+                ? Math.round(rows.reduce((sum, r) => sum + r.tok_per_s, 0) / rows.length)
+                : 0;
+            const avgTTFT = rows.length
+                ? (rows.reduce((sum, r) => sum + r.ttft_s, 0) / rows.length).toFixed(2)
+                : "0";
+            document.getElementById("cards").innerHTML = `
+                <div class="card"><div class="value">${rows.length}</div><div class="label">Rows</div></div>
+                <div class="card"><div class="value">${passed}/${rows.length}</div><div class="label">Passed</div></div>
+                <div class="card"><div class="value">${avgTok}</div><div class="label">Avg tok/s</div></div>
+                <div class="card"><div class="value">${avgTTFT}</div><div class="label">Avg TTFT (s)</div></div>
+            `;
+
+            // Table.
+            const tbody = document.querySelector("#results-table tbody");
+            tbody.innerHTML = rows.map((r) => `
+                <tr>
+                    <td class="engine">${escapeHtml(r.engine)}</td>
+                    <td>${escapeHtml(r.model)}</td>
+                    <td>${escapeHtml(r.task_id)}</td>
+                    <td>${escapeHtml(r.category)}</td>
+                    <td>${r.ttft_s.toFixed(3)}</td>
+                    <td>${r.tok_per_s.toFixed(1)}</td>
+                    <td>${r.iters_per_s.toFixed(1)}</td>
+                    <td>${badge(r.quality_deterministic)}</td>
+                    <td>${badge(r.quality_judge)}</td>
+                    <td>${badge(r.quality_passed)}</td>
+                </tr>
+            `).join("");
+
+            drawThroughput(rows);
+            drawPassrate(rows);
+        }
+
+        function badge(value) {
+            const yes = Boolean(value);
+            return `<span class="badge ${yes ? "yes" : "no"}">${yes ? "yes" : "no"}</span>`;
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, (c) => ({
+                "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+            }[c]));
+        }
+
+        function drawThroughput(rows) {
+            const byEngine = {};
+            rows.forEach((r) => {
+                if (!byEngine[r.engine]) byEngine[r.engine] = [];
+                byEngine[r.engine].push(r.tok_per_s);
+            });
+            const engines = Object.keys(byEngine);
+            const values = engines.map((e) => Math.round(byEngine[e].reduce((a, b) => a + b, 0) / byEngine[e].length));
+            if (throughputChart) throughputChart.destroy();
+            throughputChart = new Chart(document.getElementById("throughput-chart"), {
+                type: "bar",
+                data: {
+                    labels: engines,
+                    datasets: [{ label: "tok/s", data: values, backgroundColor: "#38bdf8" }],
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: "tok/s" } },
+                    },
+                },
+            });
+        }
+
+        function drawPassrate(rows) {
+            const cats = {};
+            rows.forEach((r) => {
+                if (!cats[r.category]) cats[r.category] = { passed: 0, total: 0 };
+                cats[r.category].total += 1;
+                if (r.quality_passed) cats[r.category].passed += 1;
+            });
+            const labels = Object.keys(cats);
+            const data = labels.map((c) => Math.round((cats[c].passed / cats[c].total) * 100));
+            if (passrateChart) passrateChart.destroy();
+            passrateChart = new Chart(document.getElementById("passrate-chart"), {
+                type: "doughnut",
+                data: {
+                    labels: labels,
+                    datasets: [{ data: data, backgroundColor: ["#38bdf8", "#22c55e", "#a78bfa", "#fbbf24"] }],
+                },
+                options: { plugins: { legend: { position: "bottom" } } },
+            });
+        }
+
+        document.getElementById("run-btn").addEventListener("click", runBenchmark);
+    </script>
+</body>
+</html>

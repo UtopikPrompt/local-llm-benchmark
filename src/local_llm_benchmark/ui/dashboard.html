@@ -4,7 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Local LLM Benchmark</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Chart.js is bundled locally (see chart.umd.min.js). The public CDN
+         (chart@4.4.1) returns a 404 for this build, so we ship the UMD build
+         with the dashboard to keep it working offline. -->
+    <script src="chart.umd.min.js"></script>
     <style>
         :root {
             --bg: #0b1120;
@@ -467,6 +470,9 @@
         }
 
         function render(rows) {
+            // Rendering results means any prior error state must be cleared.
+            clearError();
+
             // Summary cards.
             const passed = rows.filter((r) => r.quality_passed).length;
             const avgTok = rows.length

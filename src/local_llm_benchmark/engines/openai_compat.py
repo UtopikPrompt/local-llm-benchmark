@@ -31,13 +31,41 @@ def _strip_usage_response(data: dict) -> dict:
     return data.get("choices", [{}])[0].get("message", {})
 
 
+def _strip_content(message: dict) -> str:
+    """Return the assistant text from a completion ``message``.
+
+    Some engines place their output in the ``reasoning`` field rather than
+    ``content``; capture whichever is present so the returned text is complete.
+    """
+    return message.get("content") or message.get("reasoning") or ""
+
+
 def _stream_tokens(data: dict, stop: Optional[str]) -> AsyncIterator[str]:
-    """Yield tokens from a streaming OpenAI response."""
-    for chunk in data:
-        if not isinstance(chunk, dict):
-            continue
-        content = chunk.get("choices", [{}])[0].get("delta") or {}
-        token = content.get("content")
+    """Yield tokens from a streaming OpenAI response.
+
+    ``*data*`` is the raw stream (e.g. ``response.iter_lines()``), i.e. an
+    iterable of SSE text lines such as ``data: {"choices":[...]}``. Each line is
+    parsed to JSON; the reasoning chain is read from the ``reasoning`` delta
+    field (e.g. a local ``ornith-1.5`` model) and the answer from ``content``.
+    Both fields are captured so the benchmark measures the full token stream.
+    """
+    for line in data:
+        if isinstance(line, dict):  # already parsed (defensive)
+            delta = line.get("choices", [{}])[0].get("delta") or {}
+            token = delta.get("content") or delta.get("reasoning")
+        else:  # SSE text line: "data: {...}"
+            line = line.strip()
+            if not line.startswith("data:") or line == "data: [DONE]":
+                continue
+            line = line[len("data:"):].strip()
+            try:
+                parsed = json.loads(line)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            if not isinstance(parsed, dict):
+                continue
+            delta = parsed.get("choices", [{}])[0].get("delta") or {}
+            token = delta.get("content") or delta.get("reasoning")
         if token:
             yield token
     if stop is not None:
@@ -52,7 +80,7 @@ class OpenAICompatEngine(Engine):
         self._client: Optional[httpx.AsyncClient] = None
         self._model: Optional[str] = None
 
-    async def _client(self) -> httpx.AsyncClient:
+    async def _get_client(self) -> httpx.AsyncClient:
         """Return a lazily-created async HTTP client."""
         if self._client is None:
             self._client = httpx.AsyncClient(timeout=self.config.timeout)
@@ -78,7 +106,7 @@ class OpenAICompatEngine(Engine):
         an empty list / no-op rather than raising.
         """
         try:
-            client = await self._client()
+            client = await self._get_client()
             payload: dict[str, Any] = {
                 "model": self._model or self.config.model,
                 "messages": messages,
@@ -91,11 +119,11 @@ class OpenAICompatEngine(Engine):
             )
             response.raise_for_status()
             if stream:
-                async for token in _stream_tokens(response.iter_lines(), stop=None):
+                for token in _stream_tokens(response.iter_lines(), stop=None):
                     yield token
             else:
                 data = response.json()
-                yield _strip_usage_response(data).get("content", "") or ""
+                yield _strip_content(_strip_usage_response(data))
         except (httpx.HTTPStatusError, httpx.RequestError, json.JSONDecodeError):
             # Graceful degradation: a missing endpoint or a bad stream must not
             # crash the benchmark. Yield nothing and return normally.
@@ -120,7 +148,7 @@ class OpenAICompatEngine(Engine):
         list rather than raising.
         """
         try:
-            client = await self._client()
+            client = await self._get_client()
             response = await client.get(_build_url(self.config.base_url, "v1/models"))
             if response.status_code != 200:
                 return []
@@ -133,7 +161,7 @@ class OpenAICompatEngine(Engine):
     async def models_available(self) -> bool:
         """Return ``True`` if the engine exposes a ``/v1/models`` endpoint."""
         try:
-            client = await self._client()
+            client = await self._get_client()
             response = await client.get(_build_url(self.config.base_url, "v1/models"))
             return response.status_code == 200
         except httpx.RequestError:

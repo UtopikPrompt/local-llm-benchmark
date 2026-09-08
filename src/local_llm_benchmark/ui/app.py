@@ -13,7 +13,18 @@ from typing import Any, Dict, List
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 
-from local_llm_benchmark.config import BenchmarkConfig, EngineConfig, JudgeConfig
+from local_llm_benchmark.config import (
+    DEFAULT_ENGINE_BASE_URL,
+    DEFAULT_ENGINE_MODEL,
+    DEFAULT_JUDGE_BASE_URL,
+    DEFAULT_JUDGE_MODEL,
+    DEFAULT_MAX_CONCURRENT,
+    DEFAULT_TIMEOUT,
+    BenchmarkConfig,
+    Defaults,
+    EngineConfig,
+    JudgeConfig,
+)
 from local_llm_benchmark.engines.base import Engine
 from local_llm_benchmark.engines.openai_compat import OpenAICompatEngine
 from local_llm_benchmark.report.report import write_report
@@ -30,8 +41,15 @@ def create_app() -> FastAPI:
 
     @app.get("/")
     async def index() -> FileResponse:
-        """Serve the dashboard."""
-        return FileResponse(_DASHBOARD, media_type="text/html")
+        """Serve the dashboard with no caching so live style changes appear."""
+        response = FileResponse(_DASHBOARD, media_type="text/html")
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        return response
+
+    @app.get("/defaults")
+    async def defaults() -> JSONResponse:
+        """Return the default values used to seed the dashboard form."""
+        return JSONResponse(Defaults().to_dict())
 
     @app.post("/config")
     async def config(base_url: str, model: str) -> JSONResponse:
@@ -65,25 +83,45 @@ def create_app() -> FastAPI:
         """
         base_url = request.get("base_url")
         model = request.get("model")
-        if not base_url or not model:
-            raise HTTPException(status_code=400, detail="'base_url' and 'model' are required")
-        engine = EngineConfig(name="ollama", base_url=base_url, model=model, timeout=request.get("timeout", 60.0), max_concurrent=request.get("max_concurrent", 1))
+        defaults = Defaults()
+        # If the user picked an engine from the multi-engine dropdown, run that
+        # configured engine instead of building a fresh single-engine config.
+        selected = request.get("engine")
+        if selected:
+            engine = defaults.select_engine(selected)
+            if engine is None:
+                raise HTTPException(status_code=404, detail=f"engine '{selected}' not configured")
+        else:
+            if not base_url or not model:
+                raise HTTPException(status_code=400, detail="'base_url' and 'model' are required")
+            engine = EngineConfig(
+                name="ollama",
+                base_url=base_url,
+                model=model,
+                timeout=request.get("timeout", defaults.timeout),
+                max_concurrent=request.get("max_concurrent", defaults.max_concurrent),
+            )
         judges: List[JudgeConfig] = []
         judge_url = request.get("judge_url") or request.get("judgeUrl")
         if judge_url:
-            judges.append(JudgeConfig(name="judge", base_url=str(judge_url), model=request.get("judge_model") or request.get("judgeModel") or "judge", timeout=request.get("timeout", 60.0)))
+            judges.append(JudgeConfig(
+                name="judge",
+                base_url=str(judge_url),
+                model=request.get("judge_model") or request.get("judgeModel") or defaults.judge_model,
+                timeout=request.get("timeout", defaults.timeout),
+            ))
         config = BenchmarkConfig(
             engines=[engine],
             judges=judges,
-            tasks=request.get("task_dir", "."),
+            tasks=request.get("task_dir", defaults.tasks),
             task=request.get("task"),
-            max_concurrent=request.get("max_concurrent", 1),
-            timeout=request.get("timeout", 60.0),
-            format=request.get("format", "json"),
-            output=request.get("output", "results.json"),
+            max_concurrent=request.get("max_concurrent", defaults.max_concurrent),
+            timeout=request.get("timeout", defaults.timeout),
+            format=request.get("format", defaults.format),
+            output=request.get("output", defaults.output),
         )
         rows = await run_benchmark(config)
-        write_report(rows, config.output, fmt=request.get("format", "json"))
+        write_report(rows, config.output, fmt=request.get("format", defaults.format))
         return JSONResponse({"rows": [row.to_dict() for row in rows], "output": config.output})
 
     @app.get("/results/{name}")
@@ -96,6 +134,15 @@ def create_app() -> FastAPI:
             return FileResponse(path, media_type="application/json")
         return FileResponse(path, media_type="text/csv")
 
+    @app.get("/engines")
+    async def engines() -> JSONResponse:
+        """Return the engines configured in the dashboard.
+
+        The dashboard renders these as a selection dropdown so the user can
+        pick which engine to benchmark, instead of entering a base URL by hand.
+        """
+        return JSONResponse(content=Defaults().to_dict()["engines"])
+
     return app
 
 
@@ -104,3 +151,8 @@ def run_server(host: str = "127.0.0.1", port: int = 8000) -> None:
     import uvicorn
 
     uvicorn.run(create_app(), host=host, port=port)
+
+
+if __name__ == "__main__":
+    # Entry point for the F5 debug session (see .vscode/launch.json).
+    run_server(host="127.0.0.1", port=8000)

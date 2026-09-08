@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Local LLM Benchmark UI",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "local_llm_benchmark.ui.app",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}/src",
+      "console": "integratedTerminal"
+    }
+  ]
+}

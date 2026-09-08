@@ -75,6 +75,8 @@ Or use a configuration file:
 python -m local_llm_benchmark.runner --config config.yaml --serve
 ```
 
+A template is included at [`config.example.yaml`](config.example.yaml). Copy it to `config.yaml`, edit the values, and pass `--config config.yaml` (or `--config config.example.yaml`).
+
 ## Configuration
 
 A configuration file is either JSON or YAML (JSON is a subset of YAML, so the loader sniffs the format automatically).

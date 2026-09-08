@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
@@ -267,8 +267,12 @@ _DEFAULT_VALIDATORS: Dict[str, TaskValidator] = {
 
 def build_default_corpus() -> List[Task]:
     """Return the default corpus with deterministic validators attached."""
-    tasks = [dict(_CORPUS[k]) for k in _CORPUS]
-    for task in tasks:
+    # ``_CORPUS`` is a ``Dict[str, Task]`` of frozen dataclasses, so iterate the
+    # values directly. Each task needing a deterministic validator is replaced
+    # with a mutable copy carrying the ``validate`` callable; the shared frozen
+    # tasks in ``_CORPUS`` are left untouched.
+    tasks = list(_CORPUS.values())
+    for index, task in enumerate(tasks):
         if task.id in _DEFAULT_VALIDATORS:
-            task.validate = _DEFAULT_VALIDATORS[task.id]
+            tasks[index] = replace(task, validate=_DEFAULT_VALIDATORS[task.id])
     return tasks

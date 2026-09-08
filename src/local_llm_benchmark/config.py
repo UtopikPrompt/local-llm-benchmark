@@ -255,6 +255,99 @@ class BenchmarkConfig:
         )
 
 
+# Centralized default values for the benchmark and the UI. These live in one
+# place so the CLI, the config file and the web dashboard all agree, instead of
+# each hardcoding the same numbers.
+DEFAULT_ENGINE_BASE_URL = "http://localhost:11434"
+DEFAULT_ENGINE_MODEL = "llama3"
+DEFAULT_JUDGE_BASE_URL = "http://localhost:11434"
+DEFAULT_JUDGE_MODEL = "llama3"
+DEFAULT_TIMEOUT = 60.0
+DEFAULT_MAX_CONCURRENT = 1
+DEFAULT_FORMAT = "json"
+DEFAULT_TASKS = "."
+DEFAULT_OUTPUT = "results.json"
+DEFAULT_TRIALS = 3
+
+
+class Defaults:
+    """Default values for the engine, judge and benchmark parameters.
+
+    Used by the CLI, config-file construction and the web dashboard so the
+    three surfaces share a single source of truth.
+    """
+
+    engine_base_url: str = DEFAULT_ENGINE_BASE_URL
+    engine_model: str = DEFAULT_ENGINE_MODEL
+    judge_base_url: str = DEFAULT_JUDGE_BASE_URL
+    judge_model: str = DEFAULT_JUDGE_MODEL
+    timeout: float = DEFAULT_TIMEOUT
+    max_concurrent: int = DEFAULT_MAX_CONCURRENT
+    format: str = DEFAULT_FORMAT
+    tasks: str = DEFAULT_TASKS
+    task: str | None = None
+    output: str = DEFAULT_OUTPUT
+    trials: int = DEFAULT_TRIALS
+    engines: List[EngineConfig] = []
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Return the defaults as a plain mapping."""
+        return {
+            "engine_base_url": self.engine_base_url,
+            "engine_model": self.engine_model,
+            "judge_base_url": self.judge_base_url,
+            "judge_model": self.judge_model,
+            "timeout": self.timeout,
+            "max_concurrent": self.max_concurrent,
+            "format": self.format,
+            "tasks": self.tasks,
+            "task": self.task,
+            "output": self.output,
+            "trials": self.trials,
+            "engines": [e.to_dict() for e in self.engines],
+        }
+
+    def select_engine(self, name: str) -> EngineConfig | None:
+        """Return the configured engine identified by *name*.
+
+        *name* matches :attr:`EngineConfig.name` (the value sent by the
+        dashboard's engine dropdown). Returns ``None`` if no engine matches.
+        """
+        for engine in self.engines:
+            if engine.name == name:
+                return engine
+        return None
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Defaults):
+            return NotImplemented
+        return self.to_dict() == other.to_dict()
+
+    def __repr__(self) -> str:  # noqa: E501
+        return f"Defaults({self.to_dict()})"
+
+
+def default_engine() -> EngineConfig:
+    """Return a new :class:`EngineConfig` populated with the default values."""
+    return EngineConfig(
+        name="default",
+        base_url=DEFAULT_ENGINE_BASE_URL,
+        model=DEFAULT_ENGINE_MODEL,
+        timeout=DEFAULT_TIMEOUT,
+        max_concurrent=DEFAULT_MAX_CONCURRENT,
+    )
+
+
+def default_judge() -> JudgeConfig:
+    """Return a new :class:`JudgeConfig` populated with the default values."""
+    return JudgeConfig(
+        name="default",
+        base_url=DEFAULT_JUDGE_BASE_URL,
+        model=DEFAULT_JUDGE_MODEL,
+        timeout=DEFAULT_TIMEOUT,
+    )
+
+
 def _is_absolute_http_url(url: str) -> bool:
     """Return ``True`` if *url* is an absolute ``http`` or ``https`` URL."""
     return url.strip().startswith(("http://", "https://"))

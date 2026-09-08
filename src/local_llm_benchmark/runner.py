@@ -86,22 +86,36 @@ async def run_benchmark(config: BenchmarkConfig) -> List[Row]:
     """
     tasks = _select_tasks(config)
     rows: List[Row] = []
-    for engine_config in config.engines:
-        engine = OpenAICompatEngine(engine_config)
-        try:
+    # Build concrete :class:`Judge` objects from the judge configurations,
+    # loading each judge engine once and closing it when the run completes.
+    judges: List[Judge] = []
+    judge_engines: List[OpenAICompatEngine] = []
+    engines: List[OpenAICompatEngine] = []
+    try:
+        for judge_config in config.judges:
+            judge_engine = OpenAICompatEngine(judge_config)
+            judge_engines.append(judge_engine)
+            judges.append(Judge(engine=judge_engine, name=judge_config.name))
+        for engine_config in config.engines:
+            engine = OpenAICompatEngine(engine_config)
+            engines.append(engine)
             for task in tasks:
                 validate = task.validate if callable(task.validate) else None
-                row = await _run_one(engine, task, config.judges, task.expected, validate)
+                row = await _run_one(engine, task, judges, task.expected, validate)
                 rows.append(row)
-        finally:
+    finally:
+        # Always release every engine opened above, including on error.
+        for engine in engines:
             await engine.close()
+        for judge_engine in judge_engines:
+            await judge_engine.close()
     return rows
 
 
 def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Benchmark local LLM engines.")
-    parser.add_argument("--engine", help="Engine name from a config file.")
+    parser.add_argument("--engine", default="engine", help="Engine name from a config file.")
     parser.add_argument("--base-url", help="Base URL of the OpenAI-compatible engine.")
     parser.add_argument("--model", help="Model served by the engine.")
     parser.add_argument("--models", action="store_true", help="List models for --base-url and exit.")
@@ -200,6 +214,26 @@ def _list_models(args: argparse.Namespace) -> None:
     from local_llm_benchmark.engines.openai_compat import OpenAICompatEngine
 
     engine_obj = OpenAICompatEngine(EngineConfig(name="models", base_url=args.base_url, model=""))
-    models = anyio.run(engine_obj.list_models)
-    anyio.run(engine_obj.close)
+    models = anyio.run(_list_and_close, engine_obj)
     print("\n".join(models))
+
+
+async def _list_and_close(engine_obj: OpenAICompatEngine) -> List[str]:
+    """List models and close the engine within a single event loop.
+
+    Both operations must run on the *same* event loop: closing the HTTP client
+    after ``list_models`` on a fresh loop raises ``RuntimeError: Event loop is
+    closed`` because the first loop has already been torn down.
+    """
+    models = await engine_obj.list_models()
+    try:
+        await engine_obj.close()
+    except Exception:
+        # The engine may already be closed or the transport may race during
+        # teardown; ignore so a failed close never fails the model listing.
+        pass
+    return models
+
+
+if __name__ == "__main__":
+    main()

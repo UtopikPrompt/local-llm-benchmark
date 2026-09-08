@@ -140,7 +140,7 @@ Open the dashboard at <http://127.0.0.1:8000> and click **Run** to benchmark the
   "judgeModel": "llama3",
   "task_dir": "tasks",
   "timeout": 60,
-  "output": "results.json"
+  "output": "results/<timestamp>.json"
 }
 ```
 

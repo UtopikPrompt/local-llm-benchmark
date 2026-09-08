@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -266,7 +267,20 @@ DEFAULT_TIMEOUT = 60.0
 DEFAULT_MAX_CONCURRENT = 1
 DEFAULT_FORMAT = "json"
 DEFAULT_TASKS = "."
-DEFAULT_OUTPUT = "results.json"
+DEFAULT_RESULTS_DIR = "results"
+
+
+def default_output(fmt: str = "json") -> str:
+    """Return the default report path: a timestamped file in ``results/``.
+
+    The filename encodes the current time (``YYYYmmdd-HHMMSS``) so successive
+    runs don't overwrite each other, and the extension matches *fmt*.
+    """
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return f"{DEFAULT_RESULTS_DIR}/{timestamp}.{fmt}"
+
+
+DEFAULT_OUTPUT = default_output()
 DEFAULT_TRIALS = 3
 
 

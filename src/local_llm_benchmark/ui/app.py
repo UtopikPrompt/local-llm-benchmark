@@ -24,6 +24,7 @@ from local_llm_benchmark.config import (
     Defaults,
     EngineConfig,
     JudgeConfig,
+    load_config,
 )
 from local_llm_benchmark.engines.base import Engine
 from local_llm_benchmark.engines.openai_compat import OpenAICompatEngine
@@ -35,8 +36,37 @@ from local_llm_benchmark.runner import run_benchmark
 _DASHBOARD = Path(__file__).parent / "dashboard.html"
 
 
-def create_app() -> FastAPI:
-    """Build the FastAPI application."""
+_CONFIG_FILE = Path(__file__).resolve().parent.parent.parent.parent / "config.yaml"
+
+
+def _load_config(config_path: str | None) -> None:
+    """Load configured engines into ``Defaults.engines``.
+
+    *config_path* selects an explicit config file (JSON or YAML). When it is
+    falsy the project-root ``config.yaml`` is loaded automatically if present,
+    so the dashboard always reflects the configured engines regardless of how
+    the server is launched. If neither file exists nothing is loaded and the
+    centralized defaults (an empty engine list) are used.
+    """
+    if not config_path:
+        path = _CONFIG_FILE
+    else:
+        path = Path(config_path)
+    if not path.exists():
+        return
+    data = load_config(str(path))
+    Defaults.engines = list(data.engines)
+
+
+def create_app(config_path: str | None = None) -> FastAPI:
+    """Build the FastAPI application.
+
+    *config_path* points at a configuration file (JSON or YAML) whose engines
+    are loaded into ``Defaults.engines`` so the dashboard's engine dropdown and
+    the ``/run`` multi-engine selection use them. Defaults to the project-root
+    ``config.yaml`` when present.
+    """
+    _load_config(config_path)
     app = FastAPI(title="Local LLM Benchmark", version="0.1.0")
 
     @app.get("/")
@@ -146,11 +176,16 @@ def create_app() -> FastAPI:
     return app
 
 
-def run_server(host: str = "127.0.0.1", port: int = 8000) -> None:
-    """Run the web server until interrupted."""
+def run_server(host: str = "127.0.0.1", port: int = 8000, config_path: str | None = None) -> None:
+    """Run the web server until interrupted.
+
+    *config_path* points at a configuration file whose engines are loaded into
+    ``Defaults.engines`` and surfaced by the dashboard. Defaults to the
+    project-root ``config.yaml`` when present.
+    """
     import uvicorn
 
-    uvicorn.run(create_app(), host=host, port=port)
+    uvicorn.run(create_app(config_path=config_path), host=host, port=port)
 
 
 if __name__ == "__main__":

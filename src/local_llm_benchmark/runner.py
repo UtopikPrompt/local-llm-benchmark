@@ -4,7 +4,7 @@ Runs the benchmark across all configured engines and writes the report::
 
     python -m local_llm_benchmark.runner \
         --base-url http://localhost:11434 --model llama3 \
-        --output results.json
+        --output results/<timestamp>.json
 
 or against a full configuration::
 
@@ -18,7 +18,7 @@ from typing import Callable, List, Optional
 
 import anyio
 
-from local_llm_benchmark.config import BenchmarkConfig, EngineConfig, JudgeConfig
+from local_llm_benchmark.config import BenchmarkConfig, default_output, EngineConfig, JudgeConfig
 from local_llm_benchmark.engines.base import Engine
 from local_llm_benchmark.engines.openai_compat import OpenAICompatEngine
 from local_llm_benchmark.eval.quality import Judge, evaluate_quality
@@ -125,7 +125,7 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument("--task-dir", default=".", help="Directory of task files.")
     parser.add_argument("--task", help="Run a single task by id.")
     parser.add_argument("--format", choices=["json", "csv"], default="json", help="Output format.")
-    parser.add_argument("--output", default="results.json", help="Path to write the report.")
+    parser.add_argument("--output", default="", help="Path to write the report. Defaults to results/<timestamp>.<format>.")
     parser.add_argument("--max-concurrent", type=int, default=1, help="Max concurrent requests per task.")
     parser.add_argument("--timeout", type=float, default=60.0, help="Per-request timeout in seconds.")
     parser.add_argument("--config", help="Path to a YAML/JSON config file.")
@@ -176,6 +176,9 @@ def _load_config_file(path: str) -> dict:
 def main(argv: Optional[List[str]] = None) -> None:
     """Entry point for ``python -m local_llm_benchmark.runner``."""
     args = _parse_args(argv)
+
+    if not args.output:
+        args.output = default_output(fmt=args.format)
 
     if args.selector:
         _run_selector(args)

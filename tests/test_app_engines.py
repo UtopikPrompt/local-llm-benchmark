@@ -11,21 +11,26 @@ import pytest
 
 from fastapi.testclient import TestClient
 
-from local_llm_benchmark.config import EngineConfig
+from local_llm_benchmark.config import EngineConfig, BenchmarkConfig, load_config, write_config
 from local_llm_benchmark.ui.app import create_app
 
 
 @pytest.fixture()
-def client(monkeypatch):
-    """Create an app whose Defaults has two configured engines."""
-    monkeypatch.setattr(
-        "local_llm_benchmark.ui.app.Defaults.engines",
-        [
-            EngineConfig(name="ollama", base_url="http://host-a:11434", model="llama3"),
-            EngineConfig(name="ollama-b", base_url="http://host-b:11434", model="llama3.1"),
-        ],
-    )
-    return TestClient(create_app())
+def client(tmp_path):
+    """Create an app whose Defaults has two configured engines.
+
+    Engines are loaded from a config file on disk via ``create_app``'s
+    ``config_path`` argument, exercising the real config-loading path instead
+    of monkeypatching ``Defaults.engines``.
+    """
+    engines = [
+        EngineConfig(name="ollama", base_url="http://host-a:11434", model="llama3"),
+        EngineConfig(name="ollama-b", base_url="http://host-b:11434", model="llama3.1"),
+    ]
+    config_file = tmp_path / "config.yaml"
+    config = BenchmarkConfig.from_dict({"engines": [e.to_dict() for e in engines]})
+    write_config(config, config_file)
+    return TestClient(create_app(config_path=config_file))
 
 
 def test_get_engines_returns_configured_engines(client):
@@ -66,3 +71,40 @@ def test_run_without_engine_still_builds_single_engine(client):
         engine = rb.call_args.args[0].engines[0]
         assert engine.base_url == "http://x:11434"
         assert engine.name == "ollama"
+
+
+def test_create_app_loads_engines_from_config(tmp_path):
+    """create_app must load the configured engines from the config file."""
+    engines = [
+        EngineConfig(name="ollama", base_url="http://host-a:11434", model="llama3"),
+        EngineConfig(name="ollama-b", base_url="http://host-b:11434", model="llama3.1"),
+    ]
+    config_file = tmp_path / "config.yaml"
+    config = BenchmarkConfig.from_dict({"engines": [e.to_dict() for e in engines]})
+    write_config(config, config_file)
+
+    # No live client: verify create_app populates the shared Defaults.engines.
+    from local_llm_benchmark.config import Defaults
+
+    create_app(config_path=config_file)
+    assert Defaults.engines == engines
+    assert Defaults.engines[0].to_dict() == {
+        "name": "ollama",
+        "base_url": "http://host-a:11434",
+        "model": "llama3",
+        "timeout": 60.0,
+        "max_concurrent": 1,
+    }
+
+
+def test_create_app_defaults_to_project_config(tmp_path, monkeypatch):
+    """create_app with no config_path auto-loads the project config.yaml."""
+    engines = [EngineConfig(name="ollama", base_url="http://host-a:11434", model="llama3")]
+    # Redirect the module's _CONFIG_FILE to the temp project config.
+    monkeypatch.setattr("local_llm_benchmark.ui.app._CONFIG_FILE", tmp_path / "config.yaml")
+    write_config(BenchmarkConfig.from_dict({"engines": [e.to_dict() for e in engines]}), tmp_path / "config.yaml")
+
+    from local_llm_benchmark.config import Defaults
+
+    create_app()
+    assert Defaults.engines == engines

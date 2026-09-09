@@ -142,13 +142,10 @@ def _resolve_config(config_path: Optional[str]) -> Path:
     if config_path:
         path = Path(config_path)
     else:
-        # Fallback: Check the known root config.yaml location if no path is provided
-        root_path = Path("/workspaces/local-llm-benchmark/config.yaml")
-        if root_path.exists():
-            path = root_path
-        else:
-            # Fallback to the project config path if the root fallback fails
-            path = Path(str(config.project_config_path()))
+        # Fallback to the repository-root config.yaml, computed from this
+        # module's location (the package sits three levels below the repo root).
+        root_path = Path(__file__).resolve().parent.parent.parent / "config.yaml"
+        path = root_path
     
     if not path.exists():
         raise EngineNotFound(f"configuration file not found: {path}")

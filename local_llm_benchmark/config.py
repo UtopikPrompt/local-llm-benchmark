@@ -428,7 +428,7 @@ def write_config(config: BenchmarkConfig, path: str | os.PathLike[str]) -> None:
 # The project configuration file shipped at the repository root. Both the new
 # API layer (:mod:`api.controller`, :mod:`api.services`) and the CLI resolve the
 # active engine configuration to this file when no explicit path is given.
-_DEFAULT_CONFIG_FILE = Path(__file__).resolve().parent.parent.parent / "config.yaml"
+_DEFAULT_CONFIG_FILE = Path(__file__).resolve().parent.parent / "config.yaml"
 
 _CONFIG_FILE: Path = _DEFAULT_CONFIG_FILE
 

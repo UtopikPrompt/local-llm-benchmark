@@ -7,11 +7,11 @@
 #   ./run --host 0.0.0.0 --port 8000
 #   ./run --config config.yaml --serve   # same as above when config.yaml exists
 #
-# Equivalent to:
-#   python -m local_llm_benchmark --host "$@"
+# Any flags are forwarded to `python -m local_llm_benchmark`, which defaults to
+# 127.0.0.1:8000 when none are given.
 #
 set -euo pipefail
 
 cd "$(dirname "$0")"
 
-python -m local_llm_benchmark --host "${1:-127.0.0.1}" --port "${2:-8000}" "$@"
+exec python -m local_llm_benchmark "$@"

@@ -15,16 +15,16 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from local_llm_benchmark.server.api import services as services_layer
 from local_llm_benchmark.server.api.services import BadRequest, EngineNotFound
-from local_llm_benchmark.server import static as static_layer
 
 # The dashboard shell and its JS/CSS assets live alongside the package at
 # ``src/web`` (e.g. ``src/web/dashboard.html``). The benchmark reports are
 # written to a ``results/`` directory at the project root.
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-_WEB_DIR = _PROJECT_ROOT / "web"
+_WEB_DIR = _PROJECT_ROOT.parent / "web"
 _RESULTS_DIR = _PROJECT_ROOT / "results"
 
 
@@ -68,15 +68,11 @@ class Controller:
         await engine.close()
         return {"models": models}
 
-    async def results(self, name: str) -> Any:
-        """Stream a saved report named *name* from the ``results/`` directory."""
-        try:
-            target = static_layer.resolve(_RESULTS_DIR, name)
-        except static_layer.NotFound:
-            raise HTTPException(status_code=404, detail=f"report '{name}' not found") from None
-        if target.suffix == ".json":
-            return FileResponse(target, media_type="application/json")
-        return FileResponse(target, media_type="text/csv")
+    async def results(
+        self, model: str | None = None, benchmark_type: str | None = None
+    ) -> Any:
+        """Return filtered benchmark results from the service layer."""
+        return await self._services.results(model, benchmark_type)
 
 
 def _build_engine(name: str, base_url: str, model: str) -> Any:
@@ -119,10 +115,14 @@ def create_app(config_path: str | None = None, app: FastAPI | None = None) -> Fa
     @app.get("/")
     async def index() -> FileResponse:
         """Serve the dashboard HTML shell."""
-        return FileResponse(_WEB_DIR / "dashboard.html", media_type="text/html")
+        dashboard_path = (
+            Path(__file__).parent.parent.parent / ".." / "web" / "dashboard.html"
+        )
+        return FileResponse(dashboard_path)
 
-    # The dashboard and its assets live alongside the package at ``src/web``.
-    static_layer.install(app, _WEB_DIR)
+    # Mount the static web assets (CSS, JS, images) at ``/web`` so the
+    # dashboard's relative asset links resolve against the served root.
+    app.mount("/web", StaticFiles(directory=_WEB_DIR))
 
     @app.get("/defaults")
     async def defaults() -> Any:
@@ -153,6 +153,21 @@ def create_app(config_path: str | None = None, app: FastAPI | None = None) -> Fa
     async def engines() -> Any:
         """Return the engines configured in the dashboard's config file."""
         return await _controller.engines()
+
+    @app.get("/api/config/engines")
+    async def get_all_engines_endpoint() -> dict:
+        """Retrieves the list of all configured engines."""
+        controller_instance = Controller()
+        engines = await controller_instance.engines()
+        return {"engines": engines}
+
+    @app.get("/api/results")
+    async def get_results_endpoint(
+        model: str | None = None, benchmark_type: str | None = None
+    ) -> Any:
+        """Retrieves benchmark results based on optional filters."""
+        controller_instance = Controller()
+        return await controller_instance.results(model=model, benchmark_type=benchmark_type)
 
     return app
 

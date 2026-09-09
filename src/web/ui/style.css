@@ -1,0 +1,310 @@
+/* LLM Benchmark Dashboard — styled after the AI Insights extension design system.
+ * Shared dark blue-slate palette, surface cards, bordered sections, heat ramp.
+ */
+
+:root {
+    --bg-base: #0f1218;
+    --bg-surface: #161b22;
+    --bg-surface-high: #1c2230;
+    --border: rgba(255, 255, 255, 0.08);
+    --text-primary: #e5e2e1;
+    --text-secondary: rgba(193, 198, 215, 0.55);
+    --primary: #007aff;
+    --primary-hover: #005ecc;
+    --primary-glow: rgba(0, 122, 255, 0.2);
+    --stage-1: #f38ba8;
+    --stage-2: #fab387;
+    --stage-3: #f9e2af;
+    --stage-4: #39ff14;
+    --danger: var(--stage-1);
+    --warning: var(--stage-3);
+    --success: var(--stage-4);
+    --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', Consolas, monospace;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-primary);
+    font-size: 13px;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Header */
+#top-header {
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+    height: 52px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+}
+
+#top-header h1 {
+    margin: 0;
+    font-size: 1.4em;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+/* Layout */
+#main-container {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+/* Side Menu */
+#side-menu {
+    width: 260px;
+    flex-shrink: 0;
+    padding: 20px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    height: fit-content;
+}
+
+#side-menu h2 {
+    margin-bottom: 16px;
+    font-size: 0.9em;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+/* Engine selector (dropdown) at the top of the side menu */
+#engine-selector {
+    margin-bottom: 16px;
+}
+
+#engine-selector label {
+    display: block;
+    font-size: 0.8em;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+#engine-select {
+    width: 100%;
+    padding: 9px 10px;
+    background: var(--bg-base);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: var(--font-primary);
+    font-weight: 500;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+#engine-select:focus {
+    border-color: rgba(0, 122, 255, 0.4);
+}
+
+.loading {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+#model-list a {
+    display: block;
+    padding: 10px 12px;
+    text-decoration: none;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+}
+
+#model-list a:hover {
+    background: var(--bg-surface-high);
+    color: var(--text-primary);
+}
+
+#model-list a.active {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 0 15px var(--primary-glow);
+}
+
+/* Main Content */
+#content-area {
+    flex-grow: 1;
+    margin-left: 24px;
+}
+
+/* Filters */
+#filters {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 24px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+#filters > h2 {
+    font-size: 0.9em;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-right: auto;
+}
+
+#filters select {
+    padding: 8px 12px;
+    background: var(--bg-base);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: var(--font-primary);
+    outline: none;
+    cursor: pointer;
+}
+
+#filters select:focus {
+    border-color: rgba(0, 122, 255, 0.4);
+}
+
+/* Results */
+#results-container {
+    padding: 4px 0;
+}
+
+#results-container h2 {
+    font-size: 0.9em;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+#loading-message {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* Results table */
+.results-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.results-table th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    background: var(--bg-surface-high);
+}
+
+.results-table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    vertical-align: top;
+}
+
+.results-table tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.results-table .mono {
+    font-family: var(--font-mono);
+    font-size: 11px;
+}
+
+.results-table .num {
+    font-family: var(--font-mono);
+    text-align: right;
+    color: var(--text-secondary);
+}
+
+/* Status pills */
+.pill {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.pill.pass {
+    background: rgba(52, 211, 153, 0.15);
+    color: #34d399;
+}
+
+.pill.fail {
+    background: rgba(248, 113, 113, 0.15);
+    color: #f87171;
+}
+
+.pill.warn {
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+}
+
+.category-pill {
+    font-size: 9px;
+    letter-spacing: 0.8px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+/* Empty / error states */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+}
+
+.empty-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.empty-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}

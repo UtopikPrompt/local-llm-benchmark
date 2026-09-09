@@ -15,6 +15,7 @@ and free of any HTTP knowledge.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -25,6 +26,7 @@ from local_llm_benchmark.config import (
     DEFAULT_JUDGE_BASE_URL,
     DEFAULT_JUDGE_MODEL,
     DEFAULT_MAX_CONCURRENT,
+    DEFAULT_RESULTS_DIR,
     DEFAULT_TIMEOUT,
     BenchmarkConfig,
     Defaults,
@@ -136,7 +138,85 @@ async def engines(config_path: Optional[str] = None) -> List[Dict[str, Any]]:
 
 
 def _resolve_config(config_path: Optional[str]) -> Path:
-    path = Path(config_path or str(config.project_config_path()))
+    """Resolve the full path to the configuration file."""
+    if config_path:
+        path = Path(config_path)
+    else:
+        # Fallback: Check the known root config.yaml location if no path is provided
+        root_path = Path("/workspaces/local-llm-benchmark/config.yaml")
+        if root_path.exists():
+            path = root_path
+        else:
+            # Fallback to the project config path if the root fallback fails
+            path = Path(str(config.project_config_path()))
+    
     if not path.exists():
         raise EngineNotFound(f"configuration file not found: {path}")
     return path
+
+
+async def results(model: str | None, benchmark_type: str | None) -> dict:
+    """
+    Read all saved benchmark reports from the results directory and filter them
+    based on optional model and benchmark type criteria.
+
+    Args:
+        model: Optional model name to filter results by.
+        benchmark_type: Optional benchmark type (e.g., 'speed', 'quality') to filter by.
+    Returns:
+        A dictionary containing a list of benchmark result dictionaries.
+    """
+    from pathlib import Path
+
+    results_dir = Path(DEFAULT_RESULTS_DIR)
+    if not results_dir.exists():
+        return {"results": []}
+
+    report_files = list(results_dir.glob("*.json"))
+    all_results: List[Dict[str, Any]] = []
+
+    for file_path in report_files:
+        try:
+            # Assuming the JSON file contains a list of result objects
+            with open(file_path, "r") as f:
+                data = json.load(f)
+
+            if isinstance(data, list):
+                for item in data:
+                    # Assuming each item has fields like 'model', 'type', 'benchmark', etc.
+                    all_results.append(item)
+            else:
+                # Handle case where the JSON might contain a single summary dict
+                all_results.append(data)
+
+        except json.JSONDecodeError:
+            # Skip non-JSON files or corrupted JSON
+            continue
+        except Exception as e:
+            print(f"Error processing file {file_path}: {e}")
+            continue
+
+    # Structure the results for the dashboard frontend using the Row schema:
+    # engine, model, judge, category, ttft_s, tok_per_s, iters_per_s,
+    # quality_passed, quality_judge, quality_note.
+    formatted_results = []
+    for item in all_results:
+        if not isinstance(item, dict):
+            continue
+        formatted_results.append(
+            {
+                "engine": item.get("engine", item.get("model", "Unknown")),
+                "model": item.get("model", item.get("engine", "Unknown")),
+                "judge": item.get("judge", ""),
+                "category": item.get("category", ""),
+                "ttft_s": item.get("ttft_s", 0.0),
+                "tok_per_s": item.get("tok_per_s", 0.0),
+                "iters_per_s": item.get("iters_per_s", 0.0),
+                "quality_passed": bool(item.get("quality_passed", False)),
+                "quality_deterministic": bool(item.get("quality_deterministic", False)),
+                "quality_judge": bool(item.get("quality_judge", False)),
+                "quality_note": item.get("quality_note", ""),
+            }
+        )
+
+    return {"results": formatted_results}

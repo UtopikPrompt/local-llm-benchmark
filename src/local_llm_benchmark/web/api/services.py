@@ -5,14 +5,18 @@ selection, configuration construction, running the benchmark and writing the
 report. They import only from the shared core package
 (:mod:`local_llm_benchmark`) and never from one another, so the HTTP concern
 lives entirely in :mod:`api.controller`.
+
+The services raise *domain* exceptions (:class:`BadRequest`,
+:class:`EngineNotFound`) rather than FastAPI's ``HTTPException``; the
+:class:`local_llm_benchmark.web.api.controller.Controller` is the sole place
+that maps those to HTTP status codes. This keeps the service layer reusable
+and free of any HTTP knowledge.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
-from fastapi import HTTPException
 
 from local_llm_benchmark import config
 from local_llm_benchmark.config import (
@@ -30,6 +34,14 @@ from local_llm_benchmark.config import (
 )
 from local_llm_benchmark.report import write_report
 import local_llm_benchmark.runner as runner
+
+
+class BadRequest(Exception):
+    """The request is missing one or more required fields."""
+
+
+class EngineNotFound(Exception):
+    """The named engine is not configured."""
 
 
 def _new_engine_from_request(request: Dict[str, Any], defaults: Defaults) -> EngineConfig:
@@ -75,18 +87,18 @@ async def run(request: Dict[str, Any], *, config_path: Optional[str] = None) -> 
         (the path the report was written to).
 
     Raises:
-        HTTPException: if an engine name is not configured (status 404), or the
-            request is missing required fields (status 400).
+        EngineNotFound: if an engine name is not configured.
+        BadRequest: if the request is missing required fields.
     """
     defaults = Defaults()
     selected = request.get("engine")
     if selected:
         engine = defaults.select_engine(selected)
         if engine is None:
-            raise HTTPException(status_code=404, detail=f"engine '{selected}' not configured")
+            raise EngineNotFound(f"engine '{selected}' not configured")
     else:
         if not request.get("base_url") or not request.get("model"):
-            raise HTTPException(status_code=400, detail="'base_url' and 'model' are required")
+            raise BadRequest("'base_url' and 'model' are required")
         engine = _new_engine_from_request(request, defaults)
 
     judges: List[JudgeConfig] = []
@@ -126,5 +138,5 @@ async def engines(config_path: Optional[str] = None) -> List[Dict[str, Any]]:
 def _resolve_config(config_path: Optional[str]) -> Path:
     path = Path(config_path or str(config.project_config_path()))
     if not path.exists():
-        raise HTTPException(status_code=404, detail=f"configuration file not found: {path}")
+        raise EngineNotFound(f"configuration file not found: {path}")
     return path

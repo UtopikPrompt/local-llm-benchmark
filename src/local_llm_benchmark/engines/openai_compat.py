@@ -172,7 +172,7 @@ class OpenAICompatEngine(Engine):
 
         This is the engine's *compute* role; the benchmark never calls it.
         """
-        from local_llm_benchmark.ui.proxy import serve_proxy
+        from local_llm_benchmark.web.proxy import serve_proxy
 
         await serve_proxy(engine)
 

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 def main() -> None:
     """Launch the web dashboard."""
-    from local_llm_benchmark.web.app import run_server
+    from local_llm_benchmark.web.api.controller import run_server
 
     run_server(host="127.0.0.1", port=8000)
 

@@ -187,7 +187,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         return
 
     if args.serve:
-        from local_llm_benchmark.ui.proxy import serve_proxy
+        from local_llm_benchmark.web.proxy import serve_proxy
 
         serve_proxy(EngineConfig(name="serve", base_url=args.base_url, model=args.model))
         return

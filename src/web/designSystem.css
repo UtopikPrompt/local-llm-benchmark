@@ -1,0 +1,275 @@
+/* designSystem.css — shared design tokens and layout primitives for the
+   Local LLM Benchmark dashboard. Mirrors the designSystem.ts provider in the
+   ai-insights-extension reference (blue-slate dark palette).
+
+   This module holds the tokens every other view module (charts.js,
+   dashboard.js) reaches for, so a single file drives the whole look. */
+
+:root {
+    /* palette */
+    --bg-base: #0f1218;
+    --bg-surface: #161b22;
+    --bg-surface-high: #1c2230;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+
+    /* text */
+    --text-primary: #e5e2e1;
+    --text-secondary: rgba(193, 198, 215, 0.55);
+
+    /* primary accent (blue) */
+    --primary: #007AFF;
+    --primary-hover: #005ecc;
+    --primary-glow: rgba(0, 122, 255, 0.2);
+
+    /* severity ramp */
+    --stage-1: #f38ba8;
+    --stage-2: #fab387;
+    --stage-3: #f9e2af;
+    --stage-4: #39FF14;
+
+    --good: #34d399;
+    --bad: #f87171;
+
+    --accent: #38bdf8;
+
+    --font-primary: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-data: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--font-primary);
+    background: var(--bg-base);
+    background-image: radial-gradient(1200px 600px at 100% -10%, #14223a 0%, transparent 60%),
+        radial-gradient(900px 500px at -10% 10%, #10203b 0%, transparent 55%);
+    background-attachment: fixed;
+    color: var(--text-primary);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+a {
+    color: var(--accent);
+}
+
+header {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 28px 32px;
+    background: linear-gradient(180deg, rgba(30, 45, 69, 0.75), rgba(30, 45, 69, 0.25));
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+}
+
+header h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+header p {
+    margin: 4px 0 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.container {
+    padding: 28px 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: flex-end;
+    margin-bottom: 24px;
+    padding: 20px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px -12px rgba(2, 6, 18, 0.6);
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+}
+
+input,
+select {
+    background: var(--bg-surface-high);
+    border: 1px solid var(--border-strong);
+    color: var(--text-primary);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: var(--font-primary);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+input::placeholder {
+    color: #6b7f9a;
+}
+
+input:focus,
+select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+    background: #2a3a58;
+}
+
+button {
+    cursor: pointer;
+    background: linear-gradient(180deg, #4fd0ff, #2b9de0);
+    color: #04223a;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-family: var(--font-primary);
+    transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
+    box-shadow: 0 6px 18px -6px rgba(56, 189, 248, 0.6);
+}
+
+button:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+}
+
+button:active {
+    transform: translateY(0);
+    filter: brightness(0.96);
+}
+
+button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+    filter: none;
+    box-shadow: none;
+}
+
+button.secondary {
+    background: var(--bg-surface-high);
+    color: var(--text-primary);
+    border: 1px solid var(--border-strong);
+    box-shadow: none;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.card:hover {
+    border-color: var(--border-strong);
+    transform: translateY(-2px);
+}
+
+.card .value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.card .label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+}
+
+.panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px;
+    margin-bottom: 22px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 10px 30px -12px rgba(2, 6, 18, 0.6);
+}
+
+.panel h2 {
+    margin: 0 0 16px;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.panel h2::after {
+    content: "";
+    display: inline-block;
+    width: 3px;
+    height: 16px;
+    margin-left: 10px;
+    vertical-align: -3px;
+    border-radius: 2px;
+    background: var(--accent);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+th,
+td {
+    text-align: left;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+th {
+    background: var(--bg-surface-high);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+td.data-text {
+    font-family: var(--font-data);
+}

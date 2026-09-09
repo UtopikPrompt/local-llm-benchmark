@@ -423,3 +423,20 @@ def write_config(config: BenchmarkConfig, path: str | os.PathLike[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
         handle.write(payload)
+
+
+# The project configuration file shipped at the repository root. Both the new
+# API layer (:mod:`api.controller`, :mod:`api.services`) and the CLI resolve the
+# active engine configuration to this file when no explicit path is given.
+_DEFAULT_CONFIG_FILE = Path(__file__).resolve().parent.parent.parent / "config.yaml"
+
+_CONFIG_FILE: Path = _DEFAULT_CONFIG_FILE
+
+
+def project_config_path() -> Path:
+    """Return the path of the project configuration file.\n\n\nThe default is the repository-root ``config.yaml``. This is a module-level
+value (not configurable at runtime) so every layer that needs to locate the
+project configuration resolves the same file. The :mod:`api` layer passes the
+result through :func:`str` because it joins it into a string comparison.
+"""
+    return _CONFIG_FILE

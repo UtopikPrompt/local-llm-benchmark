@@ -23,7 +23,7 @@ from local_llm_benchmark.config import (
     DEFAULT_TRIALS,
 )
 from local_llm_benchmark.config import Defaults
-from local_llm_benchmark.ui.app import create_app
+from local_llm_benchmark.web.app import create_app
 
 
 @pytest.fixture()

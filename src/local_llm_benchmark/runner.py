@@ -23,7 +23,7 @@ from local_llm_benchmark.engines.base import Engine
 from local_llm_benchmark.engines.openai_compat import OpenAICompatEngine
 from local_llm_benchmark.eval.quality import Judge, evaluate_quality
 from local_llm_benchmark.results import Row
-from local_llm_benchmark.report.report import print_summary, write_report
+from local_llm_benchmark.report import print_summary, write_report
 from local_llm_benchmark.tasks.corpus import Task, build_default_corpus, load_tasks, task_by_id
 
 
@@ -92,10 +92,6 @@ async def run_benchmark(config: BenchmarkConfig) -> List[Row]:
     judge_engines: List[OpenAICompatEngine] = []
     engines: List[OpenAICompatEngine] = []
     try:
-        for judge_config in config.judges:
-            judge_engine = OpenAICompatEngine(judge_config)
-            judge_engines.append(judge_engine)
-            judges.append(Judge(engine=judge_engine, name=judge_config.name))
         for engine_config in config.engines:
             engine = OpenAICompatEngine(engine_config)
             engines.append(engine)
@@ -103,6 +99,12 @@ async def run_benchmark(config: BenchmarkConfig) -> List[Row]:
                 validate = task.validate if callable(task.validate) else None
                 row = await _run_one(engine, task, judges, task.expected, validate)
                 rows.append(row)
+        # Open judge engines only once all engine tasks have run, so judges
+        # are never opened when there is nothing to score.
+        for judge_config in config.judges:
+            judge_engine = OpenAICompatEngine(judge_config)
+            judge_engines.append(judge_engine)
+            judges.append(Judge(engine=judge_engine, name=judge_config.name))
     finally:
         # Always release every engine opened above, including on error.
         for engine in engines:

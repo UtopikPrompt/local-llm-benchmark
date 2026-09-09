@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException
 
+from local_llm_benchmark import config
 from local_llm_benchmark.config import (
     DEFAULT_ENGINE_BASE_URL,
     DEFAULT_ENGINE_MODEL,
@@ -26,7 +27,6 @@ from local_llm_benchmark.config import (
     EngineConfig,
     JudgeConfig,
     load_config,
-    project_config_path,
 )
 from local_llm_benchmark.report import write_report
 import local_llm_benchmark.runner as runner
@@ -124,7 +124,7 @@ async def engines(config_path: Optional[str] = None) -> List[Dict[str, Any]]:
 
 
 def _resolve_config(config_path: Optional[str]) -> Path:
-    path = Path(config_path or str(project_config_path()))
+    path = Path(config_path or str(config.project_config_path()))
     if not path.exists():
         raise HTTPException(status_code=404, detail=f"configuration file not found: {path}")
     return path

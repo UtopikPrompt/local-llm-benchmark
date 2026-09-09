@@ -20,7 +20,7 @@ engine ──▶ speed (ttft/tok/s/iters/s) ──▶ judge ──▶ quality �
 ## Layout
 
 ```
-src/local_llm_benchmark/
+local_llm_benchmark/
 ├── config.py          # EngineConfig / JudgeConfig / BenchmarkConfig + YAML/JSON I/O
 ├── tasks/
 │   └── corpus.py      # Task dataclass + the built-in task corpus
@@ -33,7 +33,7 @@ src/local_llm_benchmark/
 │   └── quality.py      # Judge interface + evaluate_quality()
 ├── report/
 │   └── report.py       # CSV/JSON writer + print_summary()
-├── ui/
+├── server/
 │   ├── app.py          # FastAPI JSON API + static dashboard
 │   ├── proxy.py        # OpenAI-compatible serving proxy
 │   └── dashboard.html  # front-end
@@ -41,14 +41,41 @@ src/local_llm_benchmark/
 └── runner.py           # async orchestrator + CLI entrypoint
 ```
 
+The web layer (server + `web/` assets) lives at the repo root next to the package.
+
 ## Installation
+
+This is a *repo as an app*: it runs directly from the project root with no build
+step. Either install the runtime dependencies, or run straight from a checkout.
 
 ```bash
 # from the project root
 pip install -e ".[dev]"
 ```
 
-This installs the runtime dependencies (`fastapi`, `httpx`, `anyio`, `pydantic`, `PyYAML`) plus the dev tooling (`pytest`, `ruff`).
+Or, without installing anything, run straight from the checkout (the package is
+imported from the current directory):
+
+```bash
+python -m local_llm_benchmark
+```
+
+## Quick start
+
+This is a *repo as an app*: it runs directly from the project root with no build
+step. Either install the runtime dependencies, or run straight from a checkout.
+
+```bash
+# from the project root
+pip install -e ".[dev]"
+```
+
+Or, without installing anything, run straight from the checkout (the package is
+imported from the current directory):
+
+```bash
+python -m local_llm_benchmark
+```
 
 ## Quick start
 
@@ -59,23 +86,40 @@ ollama serve
 ollama pull llama3
 ```
 
-Run the benchmark against it:
+Launch the dashboard from the project root:
 
 ```bash
-python -m local_llm_benchmark.runner \
-    --base-url http://localhost:11434 \
-    --model llama3 \
-    --format csv \
-    --output results.csv
+./run
 ```
 
-Or use a configuration file:
+This serves the browser dashboard on <http://127.0.0.1:8000>. Open it and click **Run** to benchmark the running engine.
+
+The dashboard sends a JSON body to `POST /run`:
+
+```json
+{
+  "base_url": "http://localhost:11434",
+  "model": "llama3",
+  "judgeUrl": true,
+  "judgeModel": "llama3",
+  "task_dir": "tasks",
+  "timeout": 60,
+  "output": "results/<timestamp>.json"
+}
+```
+
+The dashboard also exposes:
+
+- `GET /` — the dashboard.
+- `POST /config` — preview engines/models for a candidate configuration.
+- `POST /models` — list models advertised by an engine at a base URL.
+- `GET /results/{name}` — stream a saved report.
+
+Alternatively, launch it directly:
 
 ```bash
-python -m local_llm_benchmark.runner --config config.yaml --serve
+python -m local_llm_benchmark
 ```
-
-A template is included at [`config.example.yaml`](config.example.yaml). Copy it to `config.yaml`, edit the values, and pass `--config config.yaml` (or `--config config.example.yaml`).
 
 ## Configuration
 

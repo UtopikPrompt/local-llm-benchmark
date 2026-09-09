@@ -7,6 +7,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsContainer = document.getElementById('results-container');
     const typeFilter = document.getElementById('benchmark-type-filter');
 
+    // Track the currently selected model and engine so the "Run benchmark"
+    // button triggers a run for exactly the model being viewed.
+    window.__selectedModel = '';
+    window.__selectedEngine = '';
+
     async function loadEngines() {
         try {
             const response = await fetch('/api/config/engines');
@@ -83,7 +88,44 @@ document.addEventListener('DOMContentLoaded', () => {
     function setActiveModel(element, modelName) {
         document.querySelectorAll('#model-list a').forEach(a => a.classList.remove('active'));
         element.classList.add('active');
+        window.__selectedModel = modelName;
+        window.__selectedEngine = engineSelect.value;
         loadBenchmarkResults(modelName);
+    }
+
+    // Build the request body for POST /run using the currently selected
+    // engine (its base_url) and model.
+    function buildRunRequest() {
+        const request = {};
+        const base_url = engineBaseURL(window.__selectedEngine);
+        if (base_url) request.base_url = base_url;
+        if (window.__selectedModel) request.model = window.__selectedModel;
+        return request;
+    }
+
+    // Trigger a benchmark run for the selected model and refresh the
+    // results table once the saved report is available.
+    async function runBenchmark() {
+        const button = resultsContainer.querySelector('.run-button');
+        if (button) button.disabled = true;
+        const note = resultsContainer.querySelector('.run-note');
+        if (note) note.textContent = 'Running benchmark…';
+        try {
+            const response = await fetch('/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(buildRunRequest()),
+            });
+            if (!response.ok) throw new Error('Failed to run benchmark.');
+            if (note) note.textContent = '';
+            await loadBenchmarkResults(window.__selectedModel);
+        } catch (error) {
+            console.error('Error running benchmark:', error);
+            if (note) note.textContent = 'Error: ' + error.message;
+            await loadBenchmarkResults(window.__selectedModel);
+        } finally {
+            if (button) button.disabled = false;
+        }
     }
 
     function fmt(n) {
@@ -118,17 +160,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function displayResults(results, modelName, benchmarkType) {
         resultsContainer.innerHTML = '';
+        if (resultsContainer.querySelector('.run-button')) return;
 
         if (!results || results.length === 0) {
+            const engineLabel = window.__selectedEngine
+                ? window.__selectedEngine
+                : 'the selected model';
             resultsContainer.innerHTML =
-                '<div class="empty-state">' +
-                    '<div class="empty-icon">📊</div>' +
-                    '<div class="empty-title">No results yet</div>' +
-                    '<div style="color:var(--text-secondary);font-size:0.85em;">Run a benchmark to populate results.</div>' +
+                '<div class="run-state">' +
+                    '<div class="run-subtitle">No results yet for ' +
+                        escapeHtml(engineLabel) + '.</div>' +
+                    '<button class="run-button" id="run-button">Run benchmark</button>' +
+                    '<div class="run-note" id="run-note"></div>' +
                 '</div>';
+            resultsContainer.querySelector('#run-button').addEventListener('click', runBenchmark);
             return;
         }
 
+        window.__selectedModel = modelName;
         const rows = results.map(renderResult).join('');
         resultsContainer.innerHTML =
             '<table class="results-table">' +
@@ -144,6 +193,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 '</tr></thead>' +
                 '<tbody>' + rows + '</tbody>' +
             '</table>';
+    }
+
+    function escapeHtml(value) {
+        if (value === null || value === undefined) return '';
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     async function loadBenchmarkResults(modelName) {

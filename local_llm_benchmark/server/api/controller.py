@@ -20,11 +20,11 @@ from fastapi.staticfiles import StaticFiles
 from local_llm_benchmark.server.api import services as services_layer
 from local_llm_benchmark.server.api.services import BadRequest, EngineNotFound
 
-# The dashboard shell and its JS/CSS assets live alongside the package at
-# ``src/web`` (e.g. ``src/web/dashboard.html``). The benchmark reports are
+# The dashboard shell and its JS/CSS assets live at the project root next to
+# this package (e.g. ``web/dashboard.html``). The benchmark reports are
 # written to a ``results/`` directory at the project root.
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-_WEB_DIR = _PROJECT_ROOT.parent / "web"
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_WEB_DIR = _PROJECT_ROOT / "web"
 _RESULTS_DIR = _PROJECT_ROOT / "results"
 
 
@@ -115,9 +115,7 @@ def create_app(config_path: str | None = None, app: FastAPI | None = None) -> Fa
     @app.get("/")
     async def index() -> FileResponse:
         """Serve the dashboard HTML shell."""
-        dashboard_path = (
-            Path(__file__).parent.parent.parent / ".." / "web" / "dashboard.html"
-        )
+        dashboard_path = (Path(__file__).parent.parent / "web" / "dashboard.html")
         return FileResponse(dashboard_path)
 
     # Mount the static web assets (CSS, JS, images) at ``/web`` so the

@@ -273,5 +273,5 @@ def test_project_config_path_under_repo():
     path = project_config_path()
     assert path.name == "config.yaml"
     assert path.exists()
-    # config.yaml lives at the repo root, one level above src/.
+    # config.yaml lives at the repo root, one level above the package dir.
     assert (path.parent / "src").is_dir()

@@ -1,8 +1,7 @@
 """Static asset serving for the dashboard.
 
-The dashboard and its assets live alongside the package at ``src/web``. This
-small helper knows how to mount them and stream saved reports back to the
-browser, keeping the HTTP wiring out of the API service/controller layers.
+The dashboard and its assets live at the project root next to this package at
+``web``. This small helper knows how to mount them and stream saved reports
 """
 
 from __future__ import annotations

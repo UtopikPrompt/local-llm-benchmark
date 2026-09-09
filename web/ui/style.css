@@ -308,3 +308,43 @@ body {
     color: var(--text-primary);
     margin-bottom: 6px;
 }
+
+/* Run benchmark state (shown when a model has no results yet) */
+.run-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-secondary);
+}
+
+.run-subtitle {
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+.run-button {
+    display: inline-block;
+    padding: 10px 20px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+}
+
+.run-button:hover:not(:disabled) {
+    background: var(--primary-hover);
+    box-shadow: 0 0 15px var(--primary-glow);
+}
+
+.run-button:disabled {
+    opacity: 0.6;
+    cursor: progress;
+}
+
+.run-note {
+    margin-top: 10px;
+    font-size: 12px;
+}

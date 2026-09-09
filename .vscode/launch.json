@@ -7,7 +7,7 @@
       "request": "launch",
       "module": "local_llm_benchmark",
       "justMyCode": false,
-      "cwd": "${workspaceFolder}/src",
+      "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
     }
   ]

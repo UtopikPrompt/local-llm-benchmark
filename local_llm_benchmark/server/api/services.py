@@ -144,7 +144,7 @@ def _resolve_config(config_path: Optional[str]) -> Path:
     else:
         # Fallback to the repository-root config.yaml, computed from this
         # module's location (the package sits three levels below the repo root).
-        root_path = Path(__file__).resolve().parent.parent.parent / "config.yaml"
+        root_path = Path(__file__).resolve().parent.parent.parent.parent / "config.yaml"
         path = root_path
     
     if not path.exists():

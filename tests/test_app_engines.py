@@ -35,7 +35,7 @@ def client(tmp_path, monkeypatch):
     # Import create_app *after* the monkeypatch so that app.py -> services.py
     # bind the patched project_config_path at import time (services binds it at
     # import, and a module-level import would otherwise capture the original).
-    from local_llm_benchmark.web.app import create_app
+    from local_llm_benchmark.server.app import create_app
     return TestClient(create_app())
 
 
@@ -91,7 +91,7 @@ def test_create_app_loads_engines_from_config(tmp_path):
 
     # No live client: verify create_app populates the shared Defaults.engines.
     from local_llm_benchmark.config import Defaults
-    from local_llm_benchmark.web.app import create_app
+    from local_llm_benchmark.server.app import create_app
 
     create_app(config_path=config_file)
     assert Defaults.engines == engines
@@ -112,7 +112,7 @@ def test_create_app_defaults_to_project_config(tmp_path, monkeypatch):
     write_config(BenchmarkConfig.from_dict({"engines": [e.to_dict() for e in engines]}), tmp_path / "config.yaml")
 
     from local_llm_benchmark.config import Defaults
-    from local_llm_benchmark.web.app import create_app
+    from local_llm_benchmark.server.app import create_app
 
     create_app()
     assert Defaults.engines == engines

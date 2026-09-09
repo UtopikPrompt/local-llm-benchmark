@@ -127,7 +127,7 @@ The same benchmark can be served through a FastAPI app with an embedded browser 
 
 ```bash
 # run the API + dashboard on 127.0.0.1:8000
-uvicorn local_llm_benchmark.ui.app:run_server --host 127.0.0.1 --port 8000
+uvicorn local_llm_benchmark.server.api.controller:run_server --host 127.0.0.1 --port 8000
 ```
 
 Open the dashboard at <http://127.0.0.1:8000> and click **Run** to benchmark the running engine. The dashboard sends a JSON body to `POST /run`:

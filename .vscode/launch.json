@@ -5,7 +5,7 @@
       "name": "Run Local LLM Benchmark UI",
       "type": "debugpy",
       "request": "launch",
-      "module": "local_llm_benchmark.ui.app",
+      "module": "local_llm_benchmark",
       "justMyCode": false,
       "cwd": "${workspaceFolder}/src",
       "console": "integratedTerminal"

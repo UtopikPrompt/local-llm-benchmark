@@ -8,7 +8,7 @@ lives entirely in :mod:`api.controller`.
 
 The services raise *domain* exceptions (:class:`BadRequest`,
 :class:`EngineNotFound`) rather than FastAPI's ``HTTPException``; the
-:class:`local_llm_benchmark.web.api.controller.Controller` is the sole place
+:class:`local_llm_benchmark.server.api.controller.Controller` is the sole place
 that maps those to HTTP status codes. This keeps the service layer reusable
 and free of any HTTP knowledge.
 """

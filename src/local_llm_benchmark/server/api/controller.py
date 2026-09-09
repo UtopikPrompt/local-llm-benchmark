@@ -1,8 +1,8 @@
 """HTTP controller layer.
 
 The controller is the thin HTTP bridge between the web routes
-(:mod:`local_llm_benchmark.web.app`) and the business logic in
-:mod:`local_llm_benchmark.web.api.services`. It owns the HTTP concern:
+(:mod:`local_llm_benchmark.server.app`) and the business logic in
+:mod:`local_llm_benchmark.server.api.services`. It owns the HTTP concern:
 request parsing, route-to-service dispatch and translating the
 domain-level errors raised by the service into HTTP responses. The service
 layer therefore stays agnostic of HTTP and never imports FastAPI.
@@ -16,9 +16,9 @@ from typing import Any
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
-from local_llm_benchmark.web.api import services as services_layer
-from local_llm_benchmark.web.api.services import BadRequest, EngineNotFound
-from local_llm_benchmark.web import static as static_layer
+from local_llm_benchmark.server.api import services as services_layer
+from local_llm_benchmark.server.api.services import BadRequest, EngineNotFound
+from local_llm_benchmark.server import static as static_layer
 
 # The dashboard shell and its JS/CSS assets live alongside the package at
 # ``src/web`` (e.g. ``src/web/dashboard.html``). The benchmark reports are

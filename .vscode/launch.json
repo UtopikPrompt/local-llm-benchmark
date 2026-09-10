@@ -9,6 +9,30 @@
       "justMyCode": false,
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Debug Dashboard in Browser",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://127.0.0.1:8000",
+      "browserType": "chrome",
+      "preLaunchTask": "npm: start-server",
+      "skipChildren": true
+    },
+    {
+      "name": "Debug Dashboard in Edge",
+      "type": "msedge",
+      "request": "launch",
+      "url": "http://127.0.0.1:8000",
+      "browserType": "edge",
+      "preLaunchTask": "npm: start-server",
+      "skipChildren": true
+    }
+  ],
+  "compounds": [
+    {
+      "name": "UI + Server (Python + Browser)",
+      "configurations": ["Run Local LLM Benchmark UI", "Debug Dashboard in Browser"]
     }
   ]
 }

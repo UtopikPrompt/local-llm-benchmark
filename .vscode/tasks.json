@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "start-server",
+      "command": "python -m local_llm_benchmark",
+      "isBackground": true,
+      "group": "background",
+      "presentation": {
+        "reveal": "never"
+      }
+    }
+  ]
+}

@@ -8,17 +8,21 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "ms-python.python",
-        "charliermarsh.ruff",
-        "Ollama.ollama"
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "astro.build.svelte",
+        "Ollama.ollama",
+        "svelte.svelte-vscode",
+        "ms-vscode.js-debug",
+        "ms-vscode.extension-debug-browser"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/usr/local/bin/python",
-        "python.analysis.autoImportModule": true,
-        "python.languageServer": "Pylance"
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "eslint.useFlatConfig": false,
+        "editor.formatOnSave": true
       }
     }
   },
   "postCreateCommand": "bash .devcontainer/postCreateCommand.sh",
-  "forwardPorts": [8000]
+  "forwardPorts": [5173]
 }

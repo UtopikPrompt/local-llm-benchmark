@@ -4,10 +4,9 @@
     {
       "type": "shell",
       "label": "start-server",
-      "command": "python -m local_llm_benchmark",
+      "command": "pnpm run dev",
       "isBackground": true,
       "group": "background",
-      "problemMatcher": "none",
       "presentation": {
         "reveal": "never"
       }

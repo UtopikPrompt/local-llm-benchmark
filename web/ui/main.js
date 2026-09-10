@@ -7,10 +7,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsContainer = document.getElementById('results-container');
     const typeFilter = document.getElementById('benchmark-type-filter');
 
-    // Track the currently selected model and engine so the "Run benchmark"
-    // button triggers a run for exactly the model being viewed.
-    window.__selectedModel = '';
+    // Track the set of selected models and the selected engine so the
+    // "Run benchmark" button triggers a run for the active model and the
+    // results table lists every selected model's rows.
+    window.__selectedModels = [];
     window.__selectedEngine = '';
+    // The model whose rows are currently highlighted in the side menu.
+    window.__activeModel = '';
 
     async function loadEngines() {
         try {
@@ -45,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadModels(engineName) {
         // Reset any previous selection.
-        document.querySelectorAll('#model-list a').forEach(a => a.classList.remove('active'));
         modelList.innerHTML = '<p class="loading">Loading models…</p>';
         try {
             const base_url = engineBaseURL(engineName);
@@ -72,60 +74,87 @@ document.addEventListener('DOMContentLoaded', () => {
             modelList.innerHTML = '<p style="color:var(--text-secondary);">No models available.</p>';
             return;
         }
+        const select = document.createElement('select');
+        select.setAttribute('multiple', 'multiple');
+        select.setAttribute('id', 'model-select');
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = '— Select Model(s) —';
+        placeholder.disabled = true;
+        select.appendChild(placeholder);
         models.forEach(model => {
-            const link = document.createElement('a');
-            link.href = '#';
-            link.textContent = model.charAt(0).toUpperCase() + model.slice(1).replace(/_/g, ' ');
-            link.setAttribute('data-model', model);
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                setActiveModel(link, model);
-            });
-            modelList.appendChild(link);
+            const option = document.createElement('option');
+            option.value = model;
+            option.textContent = model.charAt(0).toUpperCase() + model.slice(1).replace(/_/g, ' ');
+            select.appendChild(option);
+        });
+        modelList.appendChild(select);
+        select.addEventListener('change', () => {
+            setSelectedModels();
+            loadBenchmarkResults(serializeSelectedModels());
         });
     }
 
-    function setActiveModel(element, modelName) {
-        document.querySelectorAll('#model-list a').forEach(a => a.classList.remove('active'));
-        element.classList.add('active');
-        window.__selectedModel = modelName;
+    // Read the current selection from the multi-select dropdown. When no
+    // option is selected, keep the last active model so a run can still
+    // target a single model.
+    function readModelSelection(select) {
+        if (!select || select.selectedIndex === -1) {
+            const value = select.value;
+            if (value !== '') {
+                setSelectedModels();
+            }
+            return window.__activeModel || (window.__selectedModels[0] || '');
+        }
+        const selected = [];
+        for (let i = 0; i < select.options.length; i++) {
+            if (select.options[i].selected) selected.push(select.options[i].value);
+        }
+        setSelectedModels();
+        return selected;
+    }
+
+    function setSelectedModels() {
+        const select = document.getElementById('model-select');
+        const models = readModelSelection(select);
+        window.__selectedModels = models;
         window.__selectedEngine = engineSelect.value;
-        loadBenchmarkResults(modelName);
+        if (models.length === 1) {
+            window.__activeModel = models[0];
+        }
     }
 
-    // Build the request body for POST /run using the currently selected
-    // engine (its base_url) and model.
-    function buildRunRequest() {
-        const request = {};
-        const base_url = engineBaseURL(window.__selectedEngine);
-        if (base_url) request.base_url = base_url;
-        if (window.__selectedModel) request.model = window.__selectedModel;
-        return request;
-    }
-
-    // Trigger a benchmark run for the selected model and refresh the
+    // Trigger a benchmark run for the active model and refresh the
     // results table once the saved report is available.
     async function runBenchmark() {
         const button = resultsContainer.querySelector('.run-button');
         if (button) button.disabled = true;
         const note = resultsContainer.querySelector('.run-note');
         if (note) note.textContent = 'Running benchmark…';
+        const activeModel = window.__activeModel || window.__selectedModels[0];
         try {
             const response = await fetch('/run', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(buildRunRequest()),
+                body: JSON.stringify(buildRunRequest(activeModel)),
             });
             if (!response.ok) throw new Error('Failed to run benchmark.');
             if (note) note.textContent = '';
-            await loadBenchmarkResults(window.__selectedModel);
+            await loadBenchmarkResults(serializeSelectedModels());
         } catch (error) {
             console.error('Error running benchmark:', error);
             if (note) note.textContent = 'Error: ' + error.message;
-            await loadBenchmarkResults(window.__selectedModel);
+            await loadBenchmarkResults(serializeSelectedModels());
         } finally {
             if (button) button.disabled = false;
         }
+    }
+
+    function buildRunRequest(model) {
+        const request = {};
+        request.base_url = engineBaseURL(window.__selectedEngine);
+        request.model = model;
+        return request;
     }
 
     function fmt(n) {
@@ -158,18 +187,18 @@ document.addEventListener('DOMContentLoaded', () => {
         '</tr>';
     }
 
-    function displayResults(results, modelName, benchmarkType) {
+    function displayResults(results, modelNames, benchmarkType) {
         resultsContainer.innerHTML = '';
         if (resultsContainer.querySelector('.run-button')) return;
 
         if (!results || results.length === 0) {
-            const engineLabel = window.__selectedEngine
-                ? window.__selectedEngine
-                : 'the selected model';
+            const label = modelNames.length === 1
+                ? modelNames[0]
+                : modelNames.join(', ');
             resultsContainer.innerHTML =
                 '<div class="run-state">' +
                     '<div class="run-subtitle">No results yet for ' +
-                        escapeHtml(engineLabel) + '.</div>' +
+                        escapeHtml(label) + '.</div>' +
                     '<button class="run-button" id="run-button">Run benchmark</button>' +
                     '<div class="run-note" id="run-note"></div>' +
                 '</div>';
@@ -177,9 +206,19 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        window.__selectedModel = modelName;
+        window.__selectedModels = modelNames;
+        const header = '<div class="results-header">' +
+            '<span class="results-header-title">Benchmark Results</span>' +
+            '<span class="results-header-models">';
+        modelNames.forEach((name, index) => {
+            header += '<span class="results-header-chip">' + escapeHtml(name) + '</span>';
+            if (index < modelNames.length - 1) header += ', ';
+        });
+        header += '</span></div>';
+
         const rows = results.map(renderResult).join('');
         resultsContainer.innerHTML =
+            '<div class="results-header">' + header + '</div>' +
             '<table class="results-table">' +
                 '<thead><tr>' +
                     '<th class="mono">Engine</th>' +
@@ -205,30 +244,29 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/'/g, '&#39;');
     }
 
-    async function loadBenchmarkResults(modelName) {
+    async function loadBenchmarkResults(modelNames) {
         const benchmarkType = typeFilter.value;
         const params = new URLSearchParams();
-        if (modelName) params.append('model', modelName);
+        params.append('models', serializeSelectedModels(modelNames));
         if (benchmarkType) params.append('type', benchmarkType);
         const response = await fetch('/api/results?' + params.toString());
         if (!response.ok) throw new Error('Failed to fetch results.');
         const data = await response.json();
-        displayResults(data.results, modelName, benchmarkType);
+        displayResults(data.results, serializeSelectedModels(modelNames), benchmarkType);
+    }
+
+    function serializeSelectedModels(modelNames) {
+        const names = modelNames && modelNames.length ? modelNames : window.__selectedModels;
+        if (!names || names.length === 0) return '';
+        return names.join(',');
     }
 
     function initializeListeners() {
         typeFilter.addEventListener('change', (e) => {
-            loadBenchmarkResults('');
+            loadBenchmarkResults(serializeSelectedModels());
         });
         engineSelect.addEventListener('change', (e) => {
             loadModels(e.target.value);
-        });
-        modelList.addEventListener('click', (e) => {
-            const target = e.target.closest('#model-list a');
-            if (target) {
-                e.preventDefault();
-                setActiveModel(target, target.getAttribute('data-model'));
-            }
         });
         loadEngines();
     }

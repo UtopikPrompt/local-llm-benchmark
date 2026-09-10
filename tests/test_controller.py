@@ -122,3 +122,36 @@ def test_models_endpoint(monkeypatch):
     # Using _run:
     result = _run(controller, {"engine": "ollama", "model_url": "http://x:1"}) # Needs to simulate request args
     assert result == {"models": ["mistral"]}
+
+
+# --- results endpoint --------------------------------------------------------
+
+
+@pytest.fixture()
+def results_monkeypatch():
+    """Patch the service layer's results method to return canned rows."""
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(
+        "local_llm_benchmark.server.api.services.ResultsService.results",
+        AsyncMock(return_value=[{"engine": "ollama", "model": "llama3", "category": "qa"}]),
+    )
+    yield monkeypatch
+    monkeypatch.undo()
+
+
+def test_results_endpoint_forwards_models(results_monkeypatch):
+    from local_llm_benchmark.server.api import services
+
+    controller = _controller()
+    _run(controller, {"models": "llama3, mistral", "benchmark_type": "speed"})
+    # The controller forwards the comma-separated model list + benchmark type
+    # to the service layer.
+    assert controller._services.results.call_args.args == ("llama3, mistral", "speed")
+
+
+def test_results_endpoint_defaults_to_all_models(results_monkeypatch):
+    from local_llm_benchmark.server.api import services
+
+    controller = _controller()
+    _run(controller, {})
+    assert controller._services.results.call_args.args == (None, None)

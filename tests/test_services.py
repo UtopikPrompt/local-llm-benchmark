@@ -5,6 +5,8 @@ FastAPI client: a plain dict is posted as the request body and the result rows
 are asserted on.
 """
 
+import json
+
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -140,3 +142,76 @@ def test_engines_loads_config(tmp_path):
     config_file.write_text("engines:\n- name: ollama\n  base_url: http://a:11434\n  model: llama3\n")
     engines = [e.to_dict() for e in load_config(config_file).engines]
     assert engines == [{"name": "ollama", "base_url": "http://a:11434", "model": "llama3"}]
+
+
+# --- results endpoint --------------------------------------------------------
+
+
+@pytest.fixture()
+def results_dir(tmp_path, monkeypatch):
+    """Create a temporary results directory with canned report files."""
+    from local_llm_benchmark.config import DEFAULT_RESULTS_DIR
+
+    monkeypatch.setattr(
+        "local_llm_benchmark.server.api.services.DEFAULT_RESULTS_DIR", tmp_path
+    )
+    (tmp_path / "report1.json").write_text(json.dumps([
+        {"engine": "ollama", "model": "llama3", "category": "qa", "ttft_s": 1.0, "tok_per_s": 10.0, "iters_per_s": 5.0},
+        {"engine": "ollama", "model": "mistral", "category": "code", "ttft_s": 2.0, "tok_per_s": 20.0, "iters_per_s": 6.0},
+    ]))
+    (tmp_path / "report2.json").write_text(json.dumps([
+        {"engine": "llm-stable", "model": "llama3", "category": "code", "ttft_s": 3.0, "tok_per_s": 30.0, "iters_per_s": 7.0},
+        {"engine": "llm-stable", "model": "mistral", "category": "qa", "ttft_s": 4.0, "tok_per_s": 40.0, "iters_per_s": 8.0},
+    ]))
+
+
+async def test_results_all_models(results_dir):
+    """With no filter every row from every report is returned."""
+    result = await services.results(None, None)
+    assert len(result["results"]) == 4
+    assert {r["model"] for r in result["results"]} == {"llama3", "mistral"}
+    # Rows are grouped/sorted by model then engine.
+    assert result["results"][0]["model"] == "llama3"
+    assert result["results"][1]["model"] == "llama3"
+    assert result["results"][2]["model"] == "mistral"
+
+
+async def test_results_single_model(results_dir):
+    """A single model name filters rows to just that model."""
+    result = await services.results("llama3", None)
+    rows = result["results"]
+    assert len(rows) == 2
+    assert all(r["model"] == "llama3" for r in rows)
+    assert {r["engine"] for r in rows} == {"ollama", "llm-stable"}
+
+
+async def test_results_multiple_models(results_dir):
+    """A comma-separated list returns rows for every named model."""
+    result = await services.results("llama3, mistral", None)
+    assert len(result["results"]) == 4
+    assert all(r["model"] in {"llama3", "mistral"} for r in result["results"])
+
+
+async def test_results_single_model_no_matching_rows(results_dir):
+    """Filtering for a model with no rows returns an empty list."""
+    result = await services.results("qwen2.5", None)
+    assert result["results"] == []
+
+
+async def test_results_with_benchmark_type(results_dir):
+    """A benchmark type filter does not affect rows with no type set."""
+    result = await services.results("llama3", "speed")
+    assert len(result["results"]) == 2
+
+
+async def test_results_missing_directory_returns_empty(tmp_path):
+    """A non-existent results directory yields an empty list."""
+    from local_llm_benchmark.config import DEFAULT_RESULTS_DIR
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(
+        "local_llm_benchmark.server.api.services.DEFAULT_RESULTS_DIR", tmp_path / "does-not-exist"
+    )
+    result = await services.results(None, None)
+    assert result["results"] == []
+    monkeypatch.undo()

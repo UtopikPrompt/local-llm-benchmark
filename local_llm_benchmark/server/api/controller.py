@@ -69,10 +69,10 @@ class Controller:
         return {"models": models}
 
     async def results(
-        self, model: str | None = None, benchmark_type: str | None = None
+        self, models: str | None = None, benchmark_type: str | None = None
     ) -> Any:
         """Return filtered benchmark results from the service layer."""
-        return await self._services.results(model, benchmark_type)
+        return await self._services.results(models, benchmark_type)
 
 
 def _build_engine(name: str, base_url: str, model: str) -> Any:
@@ -161,11 +161,11 @@ def create_app(config_path: str | None = None, app: FastAPI | None = None) -> Fa
 
     @app.get("/api/results")
     async def get_results_endpoint(
-        model: str | None = None, benchmark_type: str | None = None
+        models: str | None = None, benchmark_type: str | None = None
     ) -> Any:
         """Retrieves benchmark results based on optional filters."""
         controller_instance = Controller()
-        return await controller_instance.results(model=model, benchmark_type=benchmark_type)
+        return await controller_instance.results(models=models, benchmark_type=benchmark_type)
 
     return app
 

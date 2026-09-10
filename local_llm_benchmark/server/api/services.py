@@ -152,14 +152,16 @@ def _resolve_config(config_path: Optional[str]) -> Path:
     return path
 
 
-async def results(model: str | None, benchmark_type: str | None) -> dict:
+async def results(models: str | None, benchmark_type: str | None) -> dict:
     """
-    Read all saved benchmark reports from the results directory and filter them
-    based on optional model and benchmark type criteria.
+    Read all saved benchmark reports from the results directory and filter
+    them by the requested *models* (comma-separated) and optional benchmark
+    type. Results are returned sorted by (model, engine) so all rows for a
+    given model cluster together.
 
     Args:
-        model: Optional model name to filter results by.
-        benchmark_type: Optional benchmark type (e.g., 'speed', 'quality') to filter by.
+        models: Optional comma-separated list of model names to filter by.
+        benchmark_type: Optional benchmark type (e.g., 'speed', 'quality').
     Returns:
         A dictionary containing a list of benchmark result dictionaries.
     """
@@ -215,5 +217,11 @@ async def results(model: str | None, benchmark_type: str | None) -> dict:
                 "quality_note": item.get("quality_note", ""),
             }
         )
+
+        if models:
+            wanted = {m.strip() for m in models.split(",") if m.strip()}
+            formatted_results = [r for r in formatted_results if r["model"] in wanted]
+
+        formatted_results.sort(key=lambda r: (r["model"], r["engine"]))
 
     return {"results": formatted_results}

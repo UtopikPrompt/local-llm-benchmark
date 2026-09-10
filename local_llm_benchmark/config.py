@@ -410,6 +410,15 @@ def load_config(path: str | os.PathLike[str]) -> BenchmarkConfig:
         raw = handle.read()
     parser = _load_json if format_ == "json" else _load_yaml
     data = parser(raw)
+    # ``EngineConfig`` requires an engine to declare a ``model`` (see
+    # ``EngineConfig.from_dict`` and ``test_engine_config_requires_fields``),
+    # but the shipped project ``config.yaml`` leaves it off the engine entries
+    # and relies on the centralized default. Fill the gap before parsing so the
+    # engine list loads instead of raising a 500 on the dashboard and CLI.
+    if "engines" in data and isinstance(data["engines"], list):
+        for engine in data["engines"]:
+            if not engine.get("model"):
+                engine["model"] = Defaults().engine_model
     return BenchmarkConfig.from_dict(data)
 
 

@@ -18,15 +18,9 @@
         <!-- Side Menu -->
         <aside id="side-menu">
             <h2>Engine Models</h2>
-            <div id="engine-selector">
-                <label id="engine-label" for="engine-select">Engine</label>
-                <select id="engine-select">
-                    <option value="">— Select Engine —</option>
-                    <!-- Populated by JavaScript from /api/config/engines -->
-                </select>
-            </div>
+            <button id="refresh-models" type="button" title="Reload engines and models">Refresh</button>
             <nav id="model-list">
-                <!-- Models for the selected engine, loaded from the remote API -->
+                <!-- One section per engine, each listing its models -->
             </nav>
         </aside>
 

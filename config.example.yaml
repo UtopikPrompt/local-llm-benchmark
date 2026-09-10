@@ -15,7 +15,6 @@ engines:
   # variable being benchmarked.
   - name: Ollama
     base_url: http://localhost:11434          # must be an absolute http(s) URL
-    model: llama3                              # model served by the engine
     timeout: 60.0                             # per-request timeout in seconds
     max_concurrent: 1                         # max concurrent requests per task
 

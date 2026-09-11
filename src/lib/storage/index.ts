@@ -2,12 +2,41 @@
 
 import type { EngineConfig, JudgeConfig } from "../config.js";
 import type { Row } from "../results.js";
-import type { Task } from "../corpus/tasks.js";
+import type { Task, Corpus } from "../corpus/tasks.js";
 import { buildDefaultCorpus } from "../corpus/tasks.js";
 import * as db from "./db.js";
 
-export interface Corpus {
-  tasks: Task[];
+export type { Corpus } from "../corpus/tasks.js";
+
+// `put` stores a single `{ rows }` record; `getAll` returns the array of
+// records, so unwrap the envelope before returning the payload.
+function unwrapRows(records: unknown[]): Row[] {
+  const rows = (records as Array<{ rows: Row[] }> | null)?.flatMap(
+    (r) => r.rows,
+  );
+  return rows ?? [];
+}
+function unwrapEngines(records: unknown[]): EngineConfig[] {
+  const engines = (
+    records as Array<{ engines: EngineConfig[] }> | null
+  )?.flatMap((r) => r.engines);
+  return engines ?? [];
+}
+function unwrapJudges(records: unknown[]): JudgeConfig[] {
+  const judges = (records as Array<{ judges: JudgeConfig[] }> | null)?.flatMap(
+    (r) => r.judges,
+  );
+  return judges ?? [];
+}
+function unwrapModels(
+  records: unknown[],
+): Array<{ engine: string; model: string; list: string[] }> {
+  const models = (
+    records as Array<{
+      models: Array<{ engine: string; model: string; list: string[] }>;
+    }> | null
+  )?.flatMap((r) => r.models);
+  return models ?? [];
 }
 
 export async function saveRows(rows: Row[]): Promise<void> {
@@ -15,8 +44,7 @@ export async function saveRows(rows: Row[]): Promise<void> {
 }
 
 export async function loadRows(): Promise<Row[]> {
-  const rows = await db.getAll("rows");
-  return rows as Row[];
+  return unwrapRows(await db.getAll("rows"));
 }
 
 export async function clearRows(): Promise<void> {
@@ -31,8 +59,7 @@ export async function saveEngines(engines: EngineConfig[]): Promise<void> {
 }
 
 export async function loadEngines(): Promise<EngineConfig[]> {
-  const engines = await db.getAll("engines");
-  return engines as EngineConfig[];
+  return unwrapEngines(await db.getAll("engines"));
 }
 
 export async function saveJudges(judges: JudgeConfig[]): Promise<void> {
@@ -40,8 +67,7 @@ export async function saveJudges(judges: JudgeConfig[]): Promise<void> {
 }
 
 export async function loadJudges(): Promise<JudgeConfig[]> {
-  const judges = await db.getAll("judges");
-  return judges as JudgeConfig[];
+  return unwrapJudges(await db.getAll("judges"));
 }
 
 export async function saveModels(
@@ -53,8 +79,7 @@ export async function saveModels(
 export async function loadModels(): Promise<
   Array<{ engine: string; model: string; list: string[] }>
 > {
-  const models = await db.getAll("models");
-  return models as Array<{ engine: string; model: string; list: string[] }>;
+  return unwrapModels(await db.getAll("models"));
 }
 
 export async function saveCorpus(corpus: Corpus): Promise<void> {
@@ -67,4 +92,36 @@ export async function loadCorpus(): Promise<Corpus> {
     return stored as Corpus;
   }
   return { tasks: buildDefaultCorpus() };
+}
+
+// --- JSON export / import (optional) ---------------------------------------
+// Serializes rows + config to a plain, JSON-serializable snapshot and
+// restores it. Used for downloading/uploading benchmark state.
+
+export interface StorageData {
+  rows: Row[];
+  engines: EngineConfig[];
+  judges: JudgeConfig[];
+  models: Array<{ engine: string; model: string; list: string[] }>;
+  corpus: Corpus;
+}
+
+export async function exportData(): Promise<StorageData> {
+  return {
+    rows: await loadRows(),
+    engines: await loadEngines(),
+    judges: await loadJudges(),
+    models: await loadModels(),
+    corpus: await loadCorpus(),
+  };
+}
+
+export async function importData(data: StorageData): Promise<void> {
+  await Promise.all([
+    saveRows(data.rows),
+    saveEngines(data.engines),
+    saveJudges(data.judges),
+    saveModels(data.models),
+    saveCorpus(data.corpus),
+  ]);
 }

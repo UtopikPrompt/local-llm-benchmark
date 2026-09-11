@@ -1,25 +1,13 @@
 {
-  "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug Dashboard in Chrome",
       "type": "editor-browser",
       "request": "launch",
-      "url": "http://127.0.0.1:5173",
-      "preLaunchTask": "start-server"
-    },
-    {
-      "name": "Debug Dashboard in Edge",
-      "type": "msedge",
-      "request": "launch",
-      "url": "http://127.0.0.1:5173",
-      "preLaunchTask": "start-server"
-    }
-  ],
-  "compounds": [
-    {
-      "name": "Dashboard in Browser",
-      "configurations": ["Debug Dashboard in Chrome", "Debug Dashboard in Edge"]
+      "name": "Launch Vite App",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}",
+      "preLaunchTask": "Start Vite Server",
+      "postDebugTask": "Stop Vite Server"
     }
   ]
 }

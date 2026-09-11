@@ -1,21 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
 	import { BenchmarkError } from '$lib/errors.js';
 	import { DEFAULTS } from '$lib/config.js';
 	import { loadEngines, saveEngines } from '$lib/storage/index.js';
-import { buildDefaultCorpus } from '$lib/corpus/tasks.js';
-import type { Category, Task } from '$lib/corpus/tasks.js';
+	import { buildDefaultCorpus } from '$lib/corpus/tasks.js';
+	import type { EngineConfig, JudgeConfig } from '$lib/config.js';
+	import type { BenchmarkConfig } from '$lib/config.js';
+	import type { Row } from '$lib/results.js';
+	import type { Category, Task } from '$lib/corpus/tasks.js';
+
 	let engines: EngineConfig[] = [];
 
 	onMount(async () => {
 		engines = await loadEngines();
-		page.subscribe((value) => {
-			active = value.url.pathname;
-		});
 	});
-
-	let active = '';
 
 	let engineName = DEFAULTS.engine_base_url;
 	let engineBaseUrl = DEFAULTS.engine_base_url;
@@ -23,22 +21,24 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 	let judgeName = DEFAULTS.judge_base_url;
 	let judgeBaseUrl = DEFAULTS.judge_base_url;
 	let judgeModel = DEFAULTS.judge_model;
-	let taskCategory = 'all';
-	let taskSystems = '' as string[];
-	let taskIds = '' as string[];
-	let taskExpected = '' as string[];
+	// 'all' is a UI selection, not a real category; resolved in buildTasks().
+	let taskCategory: string = 'all';
+	let taskSystems = '';
+	let taskIds = '';
+	let taskExpected = '';
 	let trials = DEFAULTS.trials;
-	let maxConcurrent = DEFAULTS.max_concurrent;
+	let max_concurrent = DEFAULTS.max_concurrent;
 	let timeout = DEFAULTS.timeout;
 	let useJudge = false;
 
 	let saving = false;
 	let running = false;
-	let status = '' as string;
+	let status = '';
 	let rows: Row[] = [];
 	let errors: BenchmarkError[] = [];
 
 	async function saveConfig(): Promise<void> {
+		await buildTasks();
 		const config: BenchmarkConfig = {
 			engines: [
 				{
@@ -46,7 +46,7 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 					base_url: engineBaseUrl,
 					model: engineModel,
 					timeout,
-					max_concurrent: maxConcurrent,
+					max_concurrent,
 				},
 			],
 			judges: useJudge
@@ -62,7 +62,10 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 			max_concurrent,
 			timeout,
 			trials,
-			tasks: taskIds,
+			tasks: buildTasks(),
+			task: null,
+			format: DEFAULTS.format,
+			output: null,
 		};
 		await saveEngines(config.engines);
 		status = 'config saved';
@@ -75,14 +78,20 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 			.split('\n')
 			.map((id) => id.trim())
 			.filter(Boolean)
-			.map((id, index) => ({
-				id,
-				category: taskCategory === 'all' ? 'qa' : taskCategory,
-				prompt: id,
-				system: systems[index] ?? null,
-				expected: expected[index] ?? null,
-				validate: null,
-			}));
+			.map((id, index) => {
+				const category: Category =
+					taskCategory === 'all'
+						? 'qa'
+						: (taskCategory as Category);
+				return {
+					id,
+					category,
+					prompt: id,
+					system: systems[index] ?? null,
+					expected: expected[index] ?? null,
+					validate: null,
+				};
+			});
 	}
 
 	async function runBenchmark(): Promise<void> {
@@ -116,6 +125,9 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 				timeout,
 				trials,
 				tasks: buildTasks(),
+				task: null,
+				format: DEFAULTS.format,
+				output: null,
 			};
 			const result = await runner(config);
 			rows = result.rows;
@@ -123,30 +135,30 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 		} catch (error) {
 			errors.push(error instanceof BenchmarkError ? error : new BenchmarkError('INVALID', String(error)));
 			status = 'error';
-		} finally {
-			running = false;
 		}
 	}
 </script>
-
-<div class="page-header">
-	<h1>Run benchmark</h1>
-	<p class="subtitle">Configure the engine under test, then run the benchmark against the corpus.</p>
-</div>
+	<div class="page-header">
+		<h1>Run benchmark</h1>
+		<p class="subtitle">Configure the engine under test, then run the benchmark against the corpus.</p>
+	</div>
 
 <div class="card">
 	<h2 class="panel-title">Engine</h2>
 	<div class="field">
-		<label>Engine name</label>
-		<input bind:value={engineName} placeholder="Ollama" />
+			<label>Engine name
+				<input bind:value={engineName} placeholder="Ollama" />
+			</label>
 	</div>
 	<div class="field">
-		<label>Base URL</label>
-		<input bind:value={engineBaseUrl} placeholder="http://localhost:11434" />
+			<label>Base URL
+				<input bind:value={engineBaseUrl} placeholder="http://localhost:11434" />
+			</label>
 	</div>
 	<div class="field">
-		<label>Model</label>
-		<input bind:value={engineModel} placeholder="llama3" />
+			<label>Model
+				<input bind:value={engineModel} placeholder="llama3" />
+			</label>
 	</div>
 </div>
 
@@ -160,16 +172,19 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 	</div>
 	{#if useJudge}
 		<div class="field">
-			<label>Judge name</label>
-			<input bind:value={judgeName} placeholder="judge" />
+			<label>Judge name
+				<input bind:value={judgeName} placeholder="judge" />
+			</label>
 		</div>
 		<div class="field">
-			<label>Judge base URL</label>
-			<input bind:value={judgeBaseUrl} placeholder="http://localhost:11434" />
+			<label>Judge base URL
+				<input bind:value={judgeBaseUrl} placeholder="http://localhost:11434" />
+			</label>
 		</div>
 		<div class="field">
-			<label>Judge model</label>
-			<input bind:value={judgeModel} placeholder="gamma4:e4b" />
+			<label>Judge model
+				<input bind:value={judgeModel} placeholder="gamma4:e4b" />
+			</label>
 		</div>
 	{/if}
 </div>
@@ -177,42 +192,49 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 <div class="card">
 	<h2 class="panel-title">Tasks</h2>
 	<div class="field">
-		<label>Category</label>
-		<select bind:value={taskCategory}>
-			<option value="all">All</option>
-			<option value="doc">doc</option>
-			<option value="code">code</option>
-			<option value="qa">qa</option>
-			<option value="math">math</option>
-		</select>
+			<label>Category
+				<select bind:value={taskCategory}>
+					<option value="all">all</option>
+					<option value="doc">doc</option>
+					<option value="code">code</option>
+					<option value="qa">qa</option>
+					<option value="math">math</option>
+				</select>
+			</label>
 	</div>
 	<div class="field">
-		<label>Task IDs (one per line)</label>
-		<textarea bind:value={taskIds} placeholder="doc-rest-api" rows="6"></textarea>
+		<label>Task IDs (one per line)
+			<textarea bind:value={taskIds} placeholder="doc-rest-api" rows="6"></textarea>
+		</label>
 	</div>
 	<div class="field">
-		<label>Systems (one per line)</label>
-		<textarea bind:value={taskSystems} rows="3"></textarea>
+		<label>Systems (one per line)
+			<textarea bind:value={taskSystems} rows="3"></textarea>
+		</label>
 	</div>
 	<div class="field">
-		<label>Expected answers (one per line)</label>
-		<textarea bind:value={taskExpected} rows="3"></textarea>
+		<label>Expected answers (one per line)
+			<textarea bind:value={taskExpected} rows="3"></textarea>
+		</label>
 	</div>
 </div>
 
 <div class="card">
 	<h2 class="panel-title">Parameters</h2>
 	<div class="field">
-		<label>Trials</label>
-		<input type="number" bind:value={trials} min="1" />
+		<label>Trials
+			<input type="number" bind:value={trials} min="1" />
+		</label>
 	</div>
 	<div class="field">
-		<label>Max concurrent</label>
-		<input type="number" bind:value={maxConcurrent} min="1" />
+		<label>Max concurrent
+			<input type="number" bind:value={max_concurrent} min="1" />
+		</label>
 	</div>
 	<div class="field">
-		<label>Timeout (s)</label>
-		<input type="number" bind:value={timeout} min="1" />
+		<label>Timeout (s)
+			<input type="number" bind:value={timeout} min="1" />
+		</label>
 	</div>
 </div>
 

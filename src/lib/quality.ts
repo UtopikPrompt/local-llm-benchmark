@@ -7,8 +7,8 @@
 // `quality_deterministic` records whether a deterministic check passed;
 // `quality_judge` records whether the judge agreed.
 
+import type { Judge, Task, TaskValidator } from "./corpus/tasks.js";
 import { BenchmarkError } from "./errors.js";
-import type { Judge, Task, TaskValidator } from "../corpus/tasks.js";
 import type { Row } from "./results.js";
 
 export async function evaluateQuality(
@@ -39,9 +39,12 @@ export async function evaluateQuality(
   let judgeAgreed = false;
   if (options.judge) {
     try {
-      const { agreed, reason } = await options.judge.score(task, answer);
+      const { agreed, note: judgeNote } = await options.judge.score(
+        task,
+        answer,
+      );
       judgeAgreed = agreed;
-      note = judgeAgreed ? `${note}; ${reason}` : `${note}; ${reason}`;
+      note = judgeAgreed ? `${note}; ${judgeNote}` : `${note}; ${judgeNote}`;
     } catch (error) {
       note = `${note}; judge failed: ${error instanceof Error ? error.message : "unknown error"}`;
     }

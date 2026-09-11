@@ -18,7 +18,7 @@ export interface Row {
 }
 
 // Ordered CSV columns for the exported report.
-export const CSV_COLUMNS: readonly string[] = [
+export const CSV_COLUMNS = Object.freeze([
   "engine",
   "model",
   "judge",
@@ -31,8 +31,8 @@ export const CSV_COLUMNS: readonly string[] = [
   "quality_deterministic",
   "quality_judge",
   "quality_note",
-];
+]);
 
-export type Category = "doc" | "code" | "qa" | "math";
-
-export const CATEGORIES: readonly Category[] = ["doc", "code", "qa", "math"];
+// Category + CATEGORIES live once in corpus/tasks.ts (canonical home).
+import type { Category, CATEGORIES } from "./corpus/tasks.js";
+export type { Category, CATEGORIES } from "./corpus/tasks.js";

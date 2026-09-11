@@ -9,8 +9,10 @@
 
 import { BenchmarkError } from "./errors.js";
 import { Semaphore } from "./util.js";
-import type { Engine, EngineConfig } from "./engines.js";
+import type { Engine } from "./engines.js";
+import type { EngineConfig } from "./config.js";
 import type { Row } from "./results.js";
+import type { Task } from "./tasks.js";
 
 interface Trial {
   tokens: number;
@@ -47,7 +49,7 @@ async function streamTokens(
 
 export async function benchmarkSpeed(
   engine: Engine,
-  task: { id: string; category: string; prompt: string; system?: string },
+  task: Task,
   options: { max_tokens: number; trials: number; max_concurrent: number },
 ): Promise<Row[]> {
   const system = task.system ?? "";

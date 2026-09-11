@@ -4,13 +4,31 @@
 
 import {
 	openDB,
-	type OpenDBDatabase,
-	type OpenDBObjectStoreNames,
-	type OpenDBValue,
+	type IDBPDatabase,
 } from 'idb';
 
 const DB_NAME = 'local-llm-benchmark';
 const DB_VERSION = 1;
+
+interface Stores {
+	rows: 'rows';
+	engines: 'engines';
+	judges: 'judges';
+	models: 'models';
+	corpus: 'corpus';
+}
+
+type StoreName = keyof Stores;
+
+// Per-store schema. Values are `unknown`; the concrete value type for each store
+// lives in storage/index.ts, which casts the results when loading.
+type StoresSchema = {
+	[StoreName in keyof Stores]: {
+		key: IDBValidKey;
+		value: unknown;
+	};
+};
+
 const STORES = {
 	rows: 'rows',
 	engines: 'engines',
@@ -19,53 +37,47 @@ const STORES = {
 	corpus: 'corpus',
 } as const;
 
-let dbPromise: Promise<OpenDBDatabase> | null = null;
+let dbPromise: Promise<IDBPDatabase<StoresSchema>> | null = null;
 
-async function openDatabase(): Promise<OpenDBDatabase> {
+async function openDatabase(): Promise<IDBPDatabase<StoresSchema>> {
 	if (!dbPromise) {
-		dbPromise = openDB<OpenDBValue, OpenDBObjectStoreNames<OpenDBValue>>(
-			DB_NAME,
-			DB_VERSION,
-			{
-				upgrade(db) {
-					for (const store of Object.values(STORES)) {
-						if (!db.objectStoreNames.contains(store)) {
-							db.createObjectStore(store);
-						}
+		dbPromise = openDB<StoresSchema>(DB_NAME, DB_VERSION, {
+			upgrade(database) {
+				for (const store of Object.values(STORES)) {
+					if (!database.objectStoreNames.contains(store)) {
+						database.createObjectStore(store);
 					}
-				},
+				}
 			},
-		);
+		});
 	}
 	return dbPromise;
 }
 
 export async function put(
-	store: keyof typeof STORES,
+	store: StoreName,
 	key: number | string,
-	value: OpenDBValue,
+	value: unknown,
 ): Promise<void> {
 	await openDatabase().then((db) => db.put(store, value, key));
 }
 
 export async function get(
-	store: keyof typeof STORES,
+	store: StoreName,
 	key: number | string,
-): Promise<OpenDBValue | undefined> {
+): Promise<unknown> {
 	const db = await openDatabase();
 	return db.get(store, key);
 }
 
-export async function getAll<T = OpenDBValue>(
-	store: keyof typeof STORES,
-): Promise<T[]> {
+export async function getAll(store: StoreName): Promise<unknown[]> {
 	const db = await openDatabase();
-	return (await db.getAll<T>(store)) as T[];
+	return db.getAll(store);
 }
 
-export async function deleteStore(store: keyof typeof STORES): Promise<void> {
+export async function deleteStore(store: StoreName): Promise<void> {
 	const db = await openDatabase();
-	await db.deleteObjectStore(store);
+	db.deleteObjectStore(store);
 }
 
-export const storeNames = Object.values(STORES);
+export const storeNames = Object.values(STORES) as StoreName[];

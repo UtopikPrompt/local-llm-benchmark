@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { Chart } from 'chart.js';
-	import type { Chart as ChartType } from 'chart.js';
-	import type { Row } from '$lib/results.js';
-	import { loadRows } from '$lib/storage/index.js';
-	import { CATEGORIES } from '$lib/ui.js';
+import type { Row } from '$lib/results.js';
+import { loadRows } from '$lib/storage/index.js';
+import { CATEGORIES } from '$lib/ui.js';
+import { registerChart, Chart } from '$lib/chart/register.js';
+import type { Chart as ChartType } from '$lib/chart/register.js';
 
-	let rows: Row[] = [];
+let rows: Row[] = [];
 	let canvas: HTMLCanvasElement | null = null;
 	let chart: ChartType | null = null;
 
@@ -41,7 +41,9 @@
 			chart = null;
 		}
 		if (!canvas) return;
-		chart = new Chart(canvas.getContext('2d'), {
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return;
+		chart = new Chart(ctx, {
 			type: 'bar',
 			data: {
 				labels: filtered().map((row) => row.task_id),
@@ -51,7 +53,7 @@
 				responsive: true,
 				plugins: {
 					legend: { display: true },
-					titles: { display: true, text: 'Throughput by task' },
+					title: { display: true, text: 'Throughput by task' },
 				},
 				scales: {
 					x: { stacked: true, title: { display: true, text: 'Task' } },
@@ -73,13 +75,14 @@
 	}
 
 	function refresh(): void {
-		rows = loadRows().then((stored) => {
-			rows = stored;
+		loadRows().then((stored) => {
+			rows = stored as Row[];
 			updateChart();
 		});
 	}
 
 	onMount(async () => {
+		registerChart();
 		rows = await loadRows();
 		initChart();
 		page.subscribe(() => {});
@@ -158,9 +161,6 @@
 </div>
 
 <style>
-	.page-header h1 {
-		margin-bottom: 0.25rem;
-	}
 	.subtitle {
 		margin-top: 0;
 		color: var(--color-muted);

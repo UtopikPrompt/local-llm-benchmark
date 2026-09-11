@@ -12,4 +12,7 @@ export interface Engine {
   ): AsyncGenerator<string>;
 
   list_models(): Promise<string[]>;
+
+  /** Release network resources. The runner calls this in `finally`. */
+  close(): Promise<void>;
 }

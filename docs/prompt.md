@@ -17,6 +17,46 @@ decisions.
 - **CORS:** browser `fetch` to the local engine requires `OLLAMA_ORIGINS="*"`
   (Ollama) or `--cors` (LM Studio).
 
+## Status
+
+The migration is **partially complete but not yet functional**. The scaffolding
+is in place, but core logic, tests, and type integrity are unfinished. Neither
+`pnpm test` nor `pnpm check` passes.
+
+### Done
+
+- **Build tooling** is configured: `package.json` uses Vite, SvelteKit
+  `^2.12`, TypeScript `^5.7`, `adapter-static`, Chart.js, `idb`, and
+  `@testing-library/svelte`. Scripts (`dev`, `build`, `test`, `check`, `lint`)
+  are all defined.
+- **New TS engine layer** exists under `src/lib/engines/` (`engines.ts`,
+  `index.ts`, `judge.ts`, `models.ts`, `openai_compat.ts`) mirroring the old
+  Python `engines/` package.
+- **Storage layer** scaffolded in `src/lib/storage/` (`db.ts`, `index.ts`).
+- **Pages** created: dashboard `/` (`+page.svelte`, 284 lines), `/corpus`,
+  `/run`.
+- On branch `feat/typescript-migration`.
+
+### Not done / broken
+
+1. **`pnpm test` fails — no tests written.** Vitest reports _"No test files
+   found_" (`include: src/**/*.{test,spec}.{js,ts}`). The old Python tests in
+   `tests/` are not migrated, and only `src/test/setup.ts` exists. **0 of ~14
+   test modules ported.**
+2. **`pnpm check` fails with 57 errors + 19 warnings** across 13 files. The
+   dashboard UI imports types (`BenchmarkConfig`, `Row`, `EngineConfig`,
+   `Judge`, `max_concurrent`, `NetworkError`) that don't resolve or don't
+   match. Representative issues:
+   - Missing module exports (e.g. `EngineConfig`, `Judge`, `max_concurrent`)
+   - Implicit `any` parameters (`index`, `s`, `id`)
+   - `Task` objects missing required `system`/`validate` fields
+   - String-vs-array conversions, `idb` type mismatches, Chart.js canvas type
+3. **Python code not fully removed.** `test_nav.py` and the entire
+   `local_llm_benchmark/` Python package remain in the workspace.
+4. **Core benchmark logic appears incomplete.** `engines.ts` is only 24 lines —
+   the actual runner/benchmark execution logic (TTFT, tokens/s, iters/s,
+   semaphore concurrency) doesn't appear implemented in TS yet.
+
 ## Domain model (port from the Python implementation)
 
 - **Engine** (`name`, `base_url`, `model`, `timeout=60`, `max_concurrent=1`).

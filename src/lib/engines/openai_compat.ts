@@ -1,8 +1,9 @@
 // OpenAI-compatible engine client. Talks to any server exposing an OpenAI
 // chat-completions API (Ollama, LM Studio, ...). All network I/O is async.
 
-import { BenchmarkError } from "./errors.js";
-import type { Engine, EngineConfig } from "./engines.js";
+import { BenchmarkError, NetworkError } from "../errors.js";
+import type { Engine } from "./engines.js";
+import type { EngineConfig } from "../config.js";
 
 function joinUrl(base: string, path: string): string {
   return `${base.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
@@ -28,7 +29,27 @@ interface ModelsResponse {
 
 export class OpenAICompatEngine implements Engine {
   config: EngineConfig;
-  private model: string | null = null;
+  private modelId: string | null = null;
+
+  get name(): string {
+    return this.config.name;
+  }
+
+  get model(): string {
+    return this.modelId || this.config.model;
+  }
+
+  get base_url(): string {
+    return this.config.base_url;
+  }
+
+  get timeout(): number {
+    return this.config.timeout;
+  }
+
+  get max_concurrent(): number {
+    return this.config.max_concurrent;
+  }
 
   constructor(config: EngineConfig) {
     this.config = config;
@@ -38,7 +59,7 @@ export class OpenAICompatEngine implements Engine {
     messages: Array<{ role: string; content: string }>,
     options: { max_tokens: number; stream: boolean },
   ): AsyncGenerator<string> {
-    const model = this.model || this.config.model;
+    const model = this.modelId || this.config.model;
     const payload = {
       model,
       messages,
@@ -100,14 +121,18 @@ export class OpenAICompatEngine implements Engine {
             }
           }
         }
-      } finally {
-        reader.releaseLock();
+      } catch {
+        throw new BenchmarkError("INVALID", "stream error");
       }
       return;
     }
 
     const data = (await response.json()) as ChatResponse;
-    const message = data.choices?.[0]?.message;
+    const choices = data.choices;
+    if (!choices?.[0]?.message) {
+      throw new BenchmarkError("INVALID", "empty completion");
+    }
+    const message = choices[0].message;
     if (!message) {
       throw new BenchmarkError("INVALID", "empty completion");
     }
@@ -123,12 +148,22 @@ export class OpenAICompatEngine implements Engine {
         }
         return response
           .json()
-          .then((data: ModelsResponse) =>
-            data.data
-              .map((model: { id?: string }) => model.id ?? "")
-              .filter(Boolean),
+          .then(
+            (data: ModelsResponse) =>
+              data.data
+                ?.map((model: { id?: string }) => model.id ?? "")
+                .filter(Boolean) ?? [],
           );
       })
       .catch(() => []);
+  }
+
+  async close(): Promise<void> {
+    // The engine uses the global `fetch`, which is a persistent, shared
+    // runtime capability rather than a per-engine connection, so there is no
+    // dedicated client to release. This resolves to signal that the engine
+    // has been closed so the runner can release the shared Semaphore in
+    // `finally`.
+    return;
   }
 }

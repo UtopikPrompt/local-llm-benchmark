@@ -13,14 +13,14 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 		corpus = await loadCorpus();
 	});
 
-	let status = '' as string;
+	let status = '';
 
-	let taskIds = '' as string[];
-	let taskCategories = '' as Category[];
-	let taskPrompts = '' as string[];
-	let taskSystems = '' as string[];
-	let taskExpected = '' as string[];
-	let taskValidators = '' as string[];
+	let taskIds = '';
+	let taskCategories = '';
+	let taskPrompts = '';
+	let taskSystems = '';
+	let taskExpected = '';
+	let taskValidators = '';
 	let corpus = { tasks: buildDefaultCorpus() };
 
 	function emptyTask(): Task {
@@ -83,33 +83,39 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 <div class="card">
 	<h2 class="panel-title">Add task</h2>
 	<div class="field">
-		<label>ID</label>
-		<input bind:value={taskIds} placeholder="my-task" />
+		<label>ID
+			<input bind:value={taskIds} placeholder="my-task" />
+		</label>
 	</div>
 	<div class="field">
-		<label>Category</label>
-		<select bind:value={taskCategories}>
-			<option value="doc">doc</option>
-			<option value="code">code</option>
-			<option value="qa">qa</option>
-			<option value="math">math</option>
-		</select>
+		<label>Category
+			<select bind:value={taskCategories}>
+				<option value="doc">doc</option>
+				<option value="code">code</option>
+				<option value="qa">qa</option>
+				<option value="math">math</option>
+			</select>
+		</label>
 	</div>
 	<div class="field">
-		<label>Prompt</label>
-		<textarea bind:value={taskPrompts} rows="3"></textarea>
+		<label>Prompt
+			<textarea bind:value={taskPrompts} rows="3"></textarea>
+		</label>
 	</div>
 	<div class="field">
-		<label>System (optional)</label>
-		<textarea bind:value={taskSystems} rows="2"></textarea>
+		<label>System (optional)
+			<textarea bind:value={taskSystems} rows="2"></textarea>
+		</label>
 	</div>
 	<div class="field">
-		<label>Expected answer</label>
-		<input bind:value={taskExpected} placeholder="e.g. GET" />
+		<label>Expected answer
+			<input bind:value={taskExpected} placeholder="e.g. GET" />
+		</label>
 	</div>
 	<div class="field">
-		<label>Validator (JS expression, optional)</label>
-		<input bind:value={taskValidators} placeholder="true" />
+		<label>Validator (JS expression, optional)
+			<input bind:value={taskValidators} placeholder="true" />
+		</label>
 	</div>
 	<button class="btn">Add task</button>
 </div>

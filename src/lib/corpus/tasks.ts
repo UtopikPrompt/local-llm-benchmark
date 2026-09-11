@@ -1,3 +1,9 @@
+// Corpus: the full set of tasks the benchmark asks an engine to answer.
+// Single canonical shape shared by storage and the UI.
+export interface Corpus {
+  tasks: Task[];
+}
+
 // Task definition: a single prompt the benchmark asks an engine to answer.
 // `category` mirrors the Python `TaskCategory` enum; the default corpus covers
 // all four: doc, code, qa, math.
@@ -31,7 +37,7 @@ export interface Judge {
 // on substring matching in the runner (via ``expected``).
 export function validateSolution(solution: string): boolean {
   const cleaned = solution.trim().toLowerCase().replace(/\s+/g, " ");
-  return "x = 5" in cleaned || "x=5" in cleaned || "5" in cleaned;
+  return cleaned.includes("x = 5") || cleaned.includes("x=5");
 }
 
 export function validateArea(area: string): boolean {
@@ -53,7 +59,7 @@ const _VALIDATORS: Record<Task["id"], TaskValidator> = {
  * callers can mutate it without affecting the shared default.
  */
 export function buildDefaultCorpus(): Task[] {
-  const tasks: Task[] = [
+  const template: Array<Omit<Task, "validate" | "system">> = [
     {
       id: "doc-rest-api",
       category: "doc",
@@ -105,13 +111,10 @@ export function buildDefaultCorpus(): Task[] {
       expected: "153.938",
     },
   ];
-  tasks.forEach((task) => {
-    const validator = _VALIDATORS[task.id];
-    if (validator) {
-      task.validate = validator;
-    }
-  });
-  return tasks;
-}
 
-export const defaultTasks = buildDefaultCorpus();
+  return template.map((t) => ({
+    ...t,
+    system: null,
+    validate: _VALIDATORS[t.id] ?? null,
+  }));
+}

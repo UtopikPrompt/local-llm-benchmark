@@ -303,3 +303,17 @@ progress {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+.dark {
+  --color-text: #e0e0e0;
+  --color-muted: #a0a0a0;
+  --color-bg: #121212;
+  --color-border: #333333;
+  --color-primary: #70a8ff;
+}
+
+.dark .theme-toggle button {
+  background-color: #2d2d2d;
+  border-color: #555;
+  color: #e0e0e0;
+}

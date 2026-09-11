@@ -1,24 +1,7 @@
-// Engine abstraction: talks to a remote OpenAI-compatible
-// chat-completions API (Ollama, LM Studio, ...).
+// This subfolder file exists so the engines' implementation modules can import
+// a stable `Engine` type. The canonical definition (with `name`/`model`/
+// `base_url`/`timeout`/`max_concurrent`) lives in the top-level `engines.ts`;
+// we re-export it so there is a single definition.
 
-export interface EngineConfig {
-  name: string;
-  model: string;
-  base_url: string;
-  timeout: number;
-  max_concurrent: number;
-}
-
-export interface Engine {
-  config: EngineConfig;
-
-  // `chat` streams the model's tokens, yielding one token at a time. Callers
-  // may iterate eagerly (for the full text) or stream incrementally (to
-  // measure time-to-first-token).
-  chat(
-    messages: Array<{ role: string; content: string }>,
-    options: { max_tokens: number; stream: boolean },
-  ): AsyncGenerator<string>;
-
-  list_models(): Promise<string[]>;
-}
+export type { Engine } from "../engines.js";
+export type { EngineConfig } from "../config.js";

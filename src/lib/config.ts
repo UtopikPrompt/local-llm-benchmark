@@ -31,7 +31,7 @@ export interface BenchmarkConfig {
 }
 
 // Centralized default values shared by the dashboard.
-export const DEFAULTS = {
+export const DEFAULTS = Object.freeze({
   engine_base_url: "http://localhost:11434",
   engine_model: "llama3",
   judge_base_url: "http://localhost:11434",
@@ -41,4 +41,4 @@ export const DEFAULTS = {
   format: "json",
   tasks: undefined,
   trials: 3,
-} as const;
+});

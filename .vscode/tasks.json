@@ -2,13 +2,31 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "type": "shell",
-      "label": "start-server",
-      "command": "pnpm run dev",
+      "label": "Start Vite Server",
+      "type": "npm",
+      "script": "dev",
       "isBackground": true,
-      "group": "background",
+      "problemMatcher": {
+        "owner": "vite",
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": "➜  Local"
+        },
+        "pattern": {
+          "regexp": ".*"
+        }
+      }
+    },
+    {
+      "label": "Stop Vite Server",
+      "type": "shell",
+      "command": "echo 'Stopping Vite'",
+      "problemMatcher": [],
+      "dependsOn": ["Start Vite Server"],
       "presentation": {
-        "reveal": "never"
+        "reveal": "never",
+        "close": true
       }
     }
   ]

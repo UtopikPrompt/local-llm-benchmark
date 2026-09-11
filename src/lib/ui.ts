@@ -33,5 +33,5 @@ export const DEFAULT_FILTERS: Filters = {
 export const CATEGORIES: Category[] = ["doc", "code", "qa", "math"];
 
 export function activeRoute(): string {
-  return page.url.pathname;
+  return (page as unknown as { url: { pathname: string } }).url.pathname;
 }

@@ -2,17 +2,21 @@
 // the answer and returns whether it agreed plus a reason.
 
 import { BenchmarkError } from "../errors.js";
-import type { Engine, EngineConfig } from "./engines.js";
+import type { Engine } from "./engines.js";
 import type { Task } from "../corpus/tasks.js";
-import type { Judge as JudgeConfig } from "../config.js";
 
 const SYSTEM_PROMPT =
   "You are a meticulous grader. Judge whether the model's answer is correct " +
   "based on the task. Reply with exactly 'yes' or 'no' and a one-line reason.";
 
-export class Judge implements import("../tasks.js").Judge {
+export class Judge {
   engine: Engine;
   name: string;
+
+  // The message list sent on the most recent `score` call, captured so tests
+  // can inspect the judge prompt construction. Mirrors the Python reference
+  // which sends a system + user message.
+  chatMessages: Array<{ role: string; content: string }> = [];
 
   constructor(engine: Engine, name: string) {
     this.engine = engine;
@@ -26,7 +30,7 @@ export class Judge implements import("../tasks.js").Judge {
     const prompt = task.system
       ? `${task.system}\n\n${task.prompt}`
       : task.prompt;
-    const messages = [
+    const messages: Array<{ role: string; content: string }> = [
       { role: "system", content: SYSTEM_PROMPT },
       {
         role: "user",
@@ -37,6 +41,7 @@ export class Judge implements import("../tasks.js").Judge {
           `Model answer:\n${answer}`,
       },
     ];
+    this.chatMessages = messages;
 
     const tokens: string[] = [];
     try {

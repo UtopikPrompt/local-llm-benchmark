@@ -1,22 +1,16 @@
-# Example benchmark configuration.
+# Example benchmark configuration (YAML).
 #
-# Run with:
-#   python -m local_llm_benchmark.runner --config config.example.yaml
-#
-# This file is a template only — it is not tracked as a real configuration.
-# Copy it to your own file (e.g. "config.yaml") and edit the values, or run
-# without --config to use the built-in defaults (see config.py Defaults).
-#
-# A configuration file is either JSON or YAML. JSON is a subset of YAML, so
-# the loader sniffs the format automatically.
+# This file describes the shape of a benchmark configuration. It is not read by
+# the browser-only tool (config lives in IndexedDB, seeded through the dashboard);
+# it is kept as a template documenting the configuration shape.
 
 engines:
   # The engine(s) under test. The model is the constant; the engine is the
   # variable being benchmarked.
   - name: Ollama
-    base_url: http://localhost:11434          # must be an absolute http(s) URL
-    timeout: 60.0                             # per-request timeout in seconds
-    max_concurrent: 1                         # max concurrent requests per task
+    base_url: http://localhost:11434 # must be an absolute http(s) URL
+    timeout: 60.0 # per-request timeout in seconds
+    max_concurrent: 1 # max concurrent requests per task
 
 judges:
   # Optional judge model that scores output quality. Omit the block to run
@@ -26,9 +20,9 @@ judges:
     model: llama3
     timeout: 60.0
 
-tasks: .                                      # directory of task files (". " = built-in corpus)
-task:                                          # optionally run a single task by id (leave blank for all)
-max_concurrent: 1                             # max concurrent engine requests globally
-timeout: 60.0                                 # default per-request timeout in seconds
-format: csv                                   # "json" or "csv"
+tasks: . # directory of task files (". " = built-in corpus)
+task: # optionally run a single task by id (leave blank for all)
+max_concurrent: 1 # max concurrent engine requests globally
+timeout: 60.0 # default per-request timeout in seconds
+format: csv # "json" or "csv"
 output: results.csv

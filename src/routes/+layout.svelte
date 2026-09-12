@@ -47,14 +47,6 @@
 		<div class="brand">
 			<h1>Local LLM Benchmark</h1>
 		</div>
-		<nav class="menu">
-			<a href="/" class:active={active === '/'}>Dashboard</a>
-			<a href="/run" class:active={active === '/run'}>Run</a>
-			<a href="/corpus" class:active={active === '/corpus'}>Corpus</a>
-		</nav>
-</header>
-
-	<header class="subnav">
 		<div class="theme-toggle">
 			<button on:click={toggleTheme} aria-label="Toggle theme">
 				{#if isDark}
@@ -64,6 +56,14 @@
 			{/if}
 			</button>
 		</div>
+</header>
+
+	<header class="subnav">
+		<nav class="menu">
+			<a href="/" class:active={active === '/'}>Dashboard</a>
+			<a href="/run" class:active={active === '/run'}>Run</a>
+			<a href="/corpus" class:active={active === '/corpus'}>Corpus</a>
+		</nav>
 	</header>
 
 	<main class="content">

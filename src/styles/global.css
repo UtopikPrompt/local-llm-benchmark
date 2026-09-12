@@ -344,7 +344,7 @@ body {
 
 .subnav nav a.active {
   color: var(--color-text);
-  border-bottom-color: #a371f7;
+  border-bottom-color: #f77171;
 }
 
 .content {

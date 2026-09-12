@@ -54,16 +54,20 @@
 		}
 	}
 
+let lastFetchUrl = '';
+
 $: if (ready && engineBaseUrl) {
-		if (!fetchingModels) {
+		if (lastFetchUrl !== engineBaseUrl) {
 			// Reactive statements can't be async; defer the fetch so the
-			// await runs outside the reactive context.
+			// await runs outside the reactive context. This only re-runs when
+			// the Base URL (or initial mount) changes.
+			lastFetchUrl = engineBaseUrl;
 			setTimeout(fetchModels, 0);
 		}
 	}
 
 	async function fetchModels(): Promise<void> {
-		fetchingModels = true;
+		loadingModels = true;
 		modelsError = '';
 		modelOptions = [];
 		try {
@@ -91,7 +95,9 @@ $: if (ready && engineBaseUrl) {
 				? error.message
 				: String(error);
 		} finally {
-			fetchingModels = false;
+			// `loadingModels` is not read by the reactive guard (that reads
+			// `lastFetchUrl`), so this does not re-trigger the fetch.
+			loadingModels = false;
 		}
 	}
 
@@ -99,7 +105,8 @@ $: if (ready && engineBaseUrl) {
 	let engineBaseUrl = DEFAULTS.engine_base_url;
 	let engineModel = DEFAULTS.engine_model;
 	let modelOptions: Array<{ id: string; label: string }> = [];
-	let fetchingModels = false;
+	let loadingModels = false;
+
 	let modelsError = '';
 	let judgeName = DEFAULTS.judge_base_url;
 	let judgeBaseUrl = DEFAULTS.judge_base_url;
@@ -238,7 +245,7 @@ async function persistConfig(): Promise<void> {
 	</div>
 	<div class="field">
 			<label>Model
-				{#if fetchingModels}
+				{#if loadingModels}
 					<span class="spinner">Loading models&hellip;</span>
 				{:else if modelsError}
 					<span class="error">{modelsError}</span>

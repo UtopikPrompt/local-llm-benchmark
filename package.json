@@ -24,6 +24,7 @@
     "@types/chrome": "^0.0.267",
     "@types/node": "^20.17.10",
     "chart.js": "^4.4.7",
+    "fake-indexeddb": "^6.2.5",
     "idb": "^8.0.0",
     "playwright": "^1.63.0",
     "svelte": "^4.2.19",

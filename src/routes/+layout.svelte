@@ -47,17 +47,18 @@
 		<div class="brand">
 			<h1>Local LLM Benchmark</h1>
 		</div>
-		<div class="theme-toggle">
-			<button on:click={toggleTheme}>
-				{isDark ? '☀️ Light Mode' : '🌙 Dark Mode'}
-			</button>
-		</div>
 		<nav class="menu">
 			<a href="/" class:active={active === '/'}>Dashboard</a>
 			<a href="/run" class:active={active === '/run'}>Run</a>
 			<a href="/corpus" class:active={active === '/corpus'}>Corpus</a>
 		</nav>
 	</header>
+
+	<div class="theme-toggle">
+		<button on:click={toggleTheme}>
+			{isDark ? '☀️ Light Mode' : '🌙 Dark Mode'}
+		</button>
+	</div>
 
 	<main class="content">
 		<slot />

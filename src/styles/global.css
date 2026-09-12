@@ -1,9 +1,40 @@
+/* --------------------------------------------------------------------------
+   Local LLM Benchmark — global design system
+   Dark slate VS Code webview aesthetic (mirrors milan-holes/ai-insights-extension).
+   Tokens drive color, elevation, radius and motion. Pages read --color-* vars.
+--------------------------------------------------------------------------- */
+
+/* Design tokens — dark slate palette */
 :root {
-  --color-text: #1f2430;
-  --color-muted: #475467;
-  --color-bg: #f6f7f9;
-  --color-border: #e2e6ec;
-  --color-primary: #2563eb;
+  /* Surfaces (darkest → most elevated) */
+  --color-bg: #0f1218;
+  --color-bg-subtle: #161b22;
+  --color-surface: #1c2230;
+  --color-border: rgba(255, 255, 255, 0.08);
+  /* Text */
+  --color-text: #e5e2e1;
+  --color-muted: rgba(193, 198, 215, 0.55);
+  /* Accent */
+  --color-primary: #007aff;
+  --color-primary-state: #005ecc;
+  /* Severity / heat ramp (1 = worst … 4 = best) */
+  --color-danger: #f38ba8;
+  --color-success: #39ff14;
+  --color-warning: #f9e2af;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.6);
+  --shadow-md:
+    0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+  --shadow-lg:
+    0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+
+  --font-primary: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "JetBrains Mono", "SF Mono", "Fira Code", Consolas, monospace;
 }
 
 * {
@@ -16,16 +47,215 @@ body {
   padding: 0;
 }
 
-.app {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  font-family:
-    "Inter",
-    system-ui,
-    -apple-system,
-    sans-serif;
+/* ------------------------------------------------------------------- body */
+body {
+  background: var(--color-bg);
   color: var(--color-text);
+}
+
+/* Ported from ai-insights-extension webview design system. */
+.data-text {
+  font-family: var(--font-data);
+}
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 20px;
+  transition: transform 0.2s ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+.card-label {
+  font-size: 0.75em;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.card-value {
+  font-size: 2em;
+  font-weight: 500;
+  color: var(--color-text);
+  margin: 4px 0;
+}
+.card-sub {
+  font-size: 0.75em;
+  color: var(--color-muted);
+}
+.section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 28px;
+}
+.section h2 {
+  font-size: 1.15em;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+.mini-card {
+  background: var(--color-surface);
+  border-radius: 4px;
+  padding: 14px;
+}
+.mini-label {
+  font-size: 0.72em;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.mini-val {
+  font-size: 1.3em;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.btn-tab {
+  background: rgba(57, 255, 20, 0.1);
+  color: var(--color-success);
+  border: 1px solid rgba(57, 255, 20, 0.3);
+  border-radius: 6px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 0.85em;
+}
+.btn-tab:hover {
+  border-color: var(--color-success);
+}
+.alert {
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.85em;
+  margin-bottom: 8px;
+}
+.alert-crit {
+  background: rgba(255, 77, 77, 0.1);
+  border: 1px solid rgba(255, 77, 77, 0.35);
+  color: #ff8a8a;
+}
+.alert-warn {
+  background: rgba(249, 226, 175, 0.08);
+  border: 1px solid rgba(249, 226, 175, 0.3);
+  color: var(--color-warning);
+}
+.alert-info {
+  background: rgba(0, 122, 255, 0.07);
+  border: 1px solid rgba(0, 122, 255, 0.25);
+  color: #6db3ff;
+}
+.score-card {
+  background: var(--color-surface);
+  padding: 20px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.8em;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+  color: var(--color-muted);
+}
+.chip-primary {
+  background: rgba(0, 122, 255, 0.12);
+  border-color: rgba(0, 122, 255, 0.3);
+  color: #6db3ff;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.pill:hover {
+  border-color: var(--color-primary);
+}
+.pill-active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+.bar-track {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  height: 8px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--color-primary);
+  transition: width 0.4s ease;
+}
+.loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: 3px;
+  background: rgba(0, 122, 255, 0.15);
+  overflow: hidden;
+}
+.loading-bar-fill {
+  height: 100%;
+  width: 40%;
+  background: var(--color-primary);
+  border-radius: 0 2px 2px 0;
+  animation: loadslide 1.4s ease-in-out infinite;
+}
+@keyframes loadslide {
+  0% {
+    transform: translateX(-100%);
+  }
+  60% {
+    transform: translateX(280%);
+  }
+  100% {
+    transform: translateX(280%);
+  }
+}
+.loading-banner {
+  background: rgba(0, 122, 255, 0.08);
+  border-bottom: 1px solid rgba(0, 122, 255, 0.2);
+  padding: 8px 32px;
+  font-size: 0.82em;
+  color: #6db3ff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.loading-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(0, 122, 255, 0.3);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .topbar {
@@ -316,4 +546,18 @@ progress {
   background-color: #2d2d2d;
   border-color: #555;
   color: #e0e0e0;
+}
+
+.dark {
+  --color-text: #e6edf3;
+  --color-muted: rgba(148, 163, 184, 0.7);
+  --color-bg: #0d1117;
+  --color-bg-subtle: #161b22;
+  --color-surface: #1c2333;
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-primary: #1f6fff;
+  --color-primary-state: #6fa8fc;
+  --color-danger: #ff7b72;
+  --color-success: #3fb950;
+  --color-warning: #d29922;
 }

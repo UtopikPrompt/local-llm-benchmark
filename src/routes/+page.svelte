@@ -167,20 +167,31 @@ let rows: Row[] = [];
 	}
 	.filters {
 		display: flex;
-		gap: 0.5rem;
+		gap: 0.75rem;
 		margin-bottom: 1rem;
+		flex-wrap: wrap;
 	}
 	.filters select {
-		padding: 0.4rem;
+		padding: 0.5rem 0.6rem;
 		border: 1px solid var(--color-border);
-		border-radius: 6px;
+		border-radius: var(--radius-md);
+		background: var(--color-bg);
+		color: var(--color-text);
+		font-size: 0.9rem;
+		min-width: 16rem;
 	}
 	.charts canvas {
 		max-height: 300px;
 	}
 	.summary {
 		display: flex;
-		gap: 1rem;
+		gap: 1.5rem;
+		flex-wrap: wrap;
+	}
+	.results {
+		border-top: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		overflow: hidden;
 	}
 	.results table {
 		width: 100%;
@@ -189,8 +200,16 @@ let rows: Row[] = [];
 	.results th,
 	.results td {
 		text-align: left;
-		padding: 0.4rem 0.6rem;
+		padding: 0.65rem 0.85rem;
 		border-bottom: 1px solid var(--color-border);
+	}
+	.results th:first-child,
+	.results td:first-child {
+		border-left: 1px solid var(--color-border);
+	}
+	.results th:last-child,
+	.results td:last-child {
+		border-right: 1px solid var(--color-border);
 	}
 	.ok {
 		color: var(--color-success);

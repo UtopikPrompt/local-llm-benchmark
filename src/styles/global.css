@@ -285,20 +285,21 @@ body {
   margin-bottom: 0;
 }
 
-.topbar nav {
+.subnav nav {
   display: flex;
   gap: 0.5rem;
 }
 
-.topbar nav a {
-  padding: 0.6rem 0.9rem;
+.subnav nav a {
+  padding: 0.5rem 0.8rem;
   color: var(--color-muted);
   text-decoration: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   font-weight: 500;
+  font-size: 0.9rem;
 }
 
-.topbar nav a:hover {
+.subnav nav a:hover {
   background: var(--color-surface);
   color: var(--color-text);
 }
@@ -322,7 +323,7 @@ body {
   background: var(--color-border);
 }
 
-.topbar nav a.active {
+.subnav nav a.active {
   background: var(--color-primary);
   color: #fff;
 }

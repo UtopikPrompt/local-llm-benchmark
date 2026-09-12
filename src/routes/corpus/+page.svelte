@@ -6,13 +6,6 @@ import { buildDefaultCorpus } from '$lib/corpus/tasks.js';
 import type { Category, Task } from '$lib/corpus/tasks.js';
 
 	let active = '';
-	onMount(async () => {
-		page.subscribe((value) => {
-			active = value.url.pathname;
-		});
-		corpus = await loadCorpus();
-	});
-
 	let status = '';
 
 	let taskIds = '';
@@ -22,6 +15,41 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 	let taskExpected = '';
 	let taskValidators = '';
 	let corpus = { tasks: buildDefaultCorpus() };
+	// Autosave: debounced write to IndexedDB on any change, so no Save
+	// button is required.
+	let ready = false;
+	let savedSignature = '';
+	let saveTimer = 0;
+
+	function currentSignature(): string {
+		return corpus.tasks
+			.map(
+				(t) =>
+					`${t.id}\u0000${t.category}\u0000${t.prompt}\u0000${t.system ?? ''}\u0000${t.expected ?? ''}\u0000${t.validate ?? ''}`,
+			)
+			.join('\n');
+	}
+
+	onMount(async () => {
+		page.subscribe((value) => {
+			active = value.url.pathname;
+		});
+		corpus = await loadCorpus();
+		ready = true;
+		savedSignature = currentSignature();
+	});
+
+	$: {
+		if (ready && typeof document !== 'undefined') {
+			if (savedSignature !== currentSignature()) {
+				savedSignature = currentSignature();
+				clearTimeout(saveTimer);
+				saveTimer = setTimeout(async () => {
+					await persistCorpus();
+				}, 400);
+			}
+		}
+	}
 
 	function emptyTask(): Task {
 		return {
@@ -42,8 +70,12 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 		corpus.tasks.splice(index, 1);
 	}
 
-	async function save(): Promise<void> {
+	async function persistCorpus(): Promise<void> {
 		await saveCorpus(corpus);
+	}
+
+	async function save(): Promise<void> {
+		await persistCorpus();
 		status = 'saved';
 	}
 </script>

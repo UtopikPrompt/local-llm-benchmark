@@ -10,10 +10,48 @@
 	import type { Category, Task } from '$lib/corpus/tasks.js';
 
 	let engines: EngineConfig[] = [];
+	// Autosave: debounced write to IndexedDB on any field change, so no
+	// Save button is required.
+	let ready = false;
+	let savedSignature = '';
+	let saveTimer = 0;
 
 	onMount(async () => {
 		engines = await loadEngines();
+		ready = true;
+		savedSignature = currentSignature();
 	});
+
+	function currentSignature(): string {
+		return [
+			engineName,
+			engineBaseUrl,
+			engineModel,
+			judgeName,
+			judgeBaseUrl,
+			judgeModel,
+			taskCategory,
+			taskSystems,
+			taskIds,
+			taskExpected,
+			trials,
+			max_concurrent,
+			timeout,
+			useJudge,
+		].join('\u0000');
+	}
+
+	$: {
+		if (ready && typeof document !== 'undefined') {
+			if (savedSignature !== currentSignature()) {
+				savedSignature = currentSignature();
+				clearTimeout(saveTimer);
+				saveTimer = setTimeout(async () => {
+					await persistConfig();
+				}, 400);
+			}
+		}
+	}
 
 	let engineName = DEFAULTS.engine_base_url;
 	let engineBaseUrl = DEFAULTS.engine_base_url;
@@ -37,7 +75,7 @@
 	let rows: Row[] = [];
 	let errors: BenchmarkError[] = [];
 
-	async function saveConfig(): Promise<void> {
+async function persistConfig(): Promise<void> {
 		await buildTasks();
 		const config: BenchmarkConfig = {
 			engines: [
@@ -51,13 +89,13 @@
 			],
 			judges: useJudge
 				? [
-						{
-							name: judgeName,
-							base_url: judgeBaseUrl,
-							model: judgeModel,
-							timeout,
-						},
-					]
+					{
+						name: judgeName,
+						base_url: judgeBaseUrl,
+						model: judgeModel,
+						timeout,
+					},
+				]
 				: [],
 			max_concurrent,
 			timeout,
@@ -68,6 +106,10 @@
 			output: null,
 		};
 		await saveEngines(config.engines);
+	}
+
+	async function saveConfig(): Promise<void> {
+		await persistConfig();
 		status = 'config saved';
 	}
 

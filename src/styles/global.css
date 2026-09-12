@@ -280,7 +280,7 @@ body {
 
 .brand h1 {
   font-family: "Space Grotesk", "Inter", sans-serif;
-  font-size: 1.1rem;
+  font-size: 1.5rem;
   margin-bottom: 0;
 }
 
@@ -322,21 +322,21 @@ body {
 
 .subnav nav a {
   padding: 0.5rem 0.8rem;
-  color: var(--color-muted);
+  color: var(--color-text);
   text-decoration: none;
-  border-radius: var(--radius-md);
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   font-weight: 500;
   font-size: 0.9rem;
 }
 
 .subnav nav a:hover {
-  background: var(--color-surface);
   color: var(--color-text);
 }
 
 .subnav nav a.active {
-  background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
+  border-bottom-color: #a371f7;
 }
 
 .content {

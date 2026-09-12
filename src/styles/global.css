@@ -284,60 +284,11 @@ body {
   margin-bottom: 0;
 }
 
-.topbar nav {
-  display: flex;
-  gap: 0.5rem;
-  flex: 1;
-  justify-content: center;
-}
-
-.topbar nav a {
-  padding: 0.5rem 0.8rem;
-  color: var(--color-muted);
-  text-decoration: none;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  font-weight: 500;
-  font-size: 0.9rem;
-}
-
-.topbar nav a:hover {
-  color: var(--color-text);
-}
-
-.topbar nav a.active {
-  color: var(--color-text);
-  border-bottom-color: #a371f7;
-}
-
 .topbar-right {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
   flex: none;
 }
 
-.topbar-right a {
-  color: var(--color-muted);
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.topbar-right a:hover {
-  color: var(--color-text);
-}
-
-.divider {
-  width: 1px;
-  align-self: stretch;
-  background: var(--color-border);
-}
-
-.theme-toggle {
-  flex: none;
-}
-.theme-toggle button {
+.topbar-right button {
   display: grid;
   place-items: center;
   width: 2.25rem;
@@ -348,6 +299,44 @@ body {
   background: var(--color-surface);
   color: var(--color-text);
   cursor: pointer;
+}
+
+.topbar-right button:hover {
+  background: var(--color-border);
+}
+
+.subnav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 1.25rem;
+}
+
+.subnav nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.subnav nav a {
+  padding: 0.5rem 0.8rem;
+  color: var(--color-muted);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.subnav nav a:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.subnav nav a.active {
+  background: var(--color-primary);
+  color: #fff;
 }
 
 .content {

@@ -156,8 +156,7 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 		color: var(--color-muted);
 	}
 	.task-expected {
-		font-size: 0.85rem;
-		color: var(--color-muted);
+		overflow: hidden;
 	}
 	.actions {
 		display: flex;

@@ -61,3 +61,8 @@
 			</button>
 		</div>
 	</header>
+
+	<main class="content">
+		<slot />
+	</main>
+</div>

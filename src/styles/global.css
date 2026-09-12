@@ -261,9 +261,10 @@ body {
 
 .topbar {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.5rem;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
   padding: 0 1.25rem;
@@ -298,7 +299,28 @@ body {
 }
 
 .topbar nav a:hover {
-  background: #e9edf2;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.theme-toggle {
+  flex: none;
+}
+.theme-toggle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  font-family: var(--font-primary);
+  cursor: pointer;
+}
+.theme-toggle button:hover {
+  background: var(--color-border);
 }
 
 .topbar nav a.active {

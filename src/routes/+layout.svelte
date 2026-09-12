@@ -52,6 +52,11 @@
 			<a href="/run" class:active={active === '/run'}>Run</a>
 			<a href="/corpus" class:active={active === '/corpus'}>Corpus</a>
 		</nav>
+		<div class="theme-toggle">
+			<button on:click={toggleTheme} aria-label="Toggle theme">
+				{isDark ? '☀️ Light Mode' : '🌙 Dark Mode'}
+			</button>
+		</div>
 	</header>
 
 	<div class="theme-toggle">

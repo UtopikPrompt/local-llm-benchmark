@@ -2,15 +2,16 @@
 	import { onMount } from 'svelte';
 	import { BenchmarkError } from '$lib/errors.js';
 	import { DEFAULTS } from '$lib/config.js';
-	import { loadEngines, saveEngines } from '$lib/storage/index.js';
+	import { loadEngines, loadTasks, saveEngines, saveTasks } from '$lib/storage/index.js';
 	import { makeEngine } from '$lib/engines/index.js';
 	import { buildDefaultCorpus } from '$lib/corpus/tasks.js';
-	import type { EngineConfig, JudgeConfig } from '$lib/config.js';
-	import type { BenchmarkConfig } from '$lib/config.js';
-	import type { Row } from '$lib/results.js';
-	import type { Category, Task } from '$lib/corpus/tasks.js';
 
-	let engines: EngineConfig[] = [];
+import type { EngineConfig, JudgeConfig } from '$lib/config.js';
+import type { BenchmarkConfig } from '$lib/config.js';
+import type { Row } from '$lib/results.js';
+import type { Category, Task } from '$lib/corpus/tasks.js';
+
+let engines: EngineConfig[] = [];
 	// Autosave: debounced write to IndexedDB on any field change, so no
 	// Save button is required.
 	let ready = false;
@@ -19,7 +20,7 @@
 
 	onMount(async () => {
 		engines = await loadEngines();
-		ready = true;
+		taskIds = (await loadTasks()).map((t) => t.id).join('\n');
 		savedSignature = currentSignature();
 	});
 
@@ -156,7 +157,12 @@ async function persistConfig(): Promise<void> {
 			format: DEFAULTS.format,
 			output: null,
 		};
-		await saveEngines(config.engines);
+		await Promise.all([
+			saveEngines(config.engines),
+			saveJudges(config.judges),
+			saveModels(config.models),
+			saveTasks(buildTasks()),
+		]);
 	}
 
 	function buildTasks(): Task[] {

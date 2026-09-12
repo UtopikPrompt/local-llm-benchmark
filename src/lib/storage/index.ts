@@ -82,6 +82,18 @@ export async function loadModels(): Promise<
   return unwrapModels(await db.getAll("models"));
 }
 
+export async function saveTasks(tasks: Task[]): Promise<void> {
+  await db.put("tasks", 0, tasks);
+}
+
+export async function loadTasks(): Promise<Task[]> {
+  const stored = await db.get("tasks", 0);
+  if (stored) {
+    return stored as Task[];
+  }
+  return [];
+}
+
 export async function saveCorpus(corpus: Corpus): Promise<void> {
   await db.put("corpus", 0, corpus);
 }

@@ -8,13 +8,14 @@ import {
 } from 'idb';
 
 const DB_NAME = 'local-llm-benchmark';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 interface Stores {
 	rows: 'rows';
 	engines: 'engines';
 	judges: 'judges';
 	models: 'models';
+	tasks: 'tasks';
 	corpus: 'corpus';
 }
 
@@ -34,6 +35,7 @@ const STORES = {
 	engines: 'engines',
 	judges: 'judges',
 	models: 'models',
+	tasks: 'tasks',
 	corpus: 'corpus',
 } as const;
 

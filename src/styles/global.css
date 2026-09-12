@@ -328,6 +328,15 @@ body {
   color: #fff;
 }
 
+.subnav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 1.25rem;
+}
+
 .content {
   padding: 1.5rem 2rem;
   max-width: 1100px;

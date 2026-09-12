@@ -14,7 +14,7 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 let engines: EngineConfig[] = [];
 	// Autosave: debounced write to IndexedDB on any field change, so no
 	// Save button is required.
-	let ready = false;
+	let ready = true;
 	let savedSignature = '';
 	let saveTimer = 0;
 

@@ -39,7 +39,7 @@ const STORES = {
 let dbPromise: Promise<IDBPDatabase<StoresSchema>> | null = null;
 
 async function openDatabase(): Promise<IDBPDatabase<StoresSchema>> {
-  if (typeof indexedDB === 'undefined') {
+  if (typeof indexedDB === "undefined") {
     throw new Error(
       "IndexedDB is not available. Persistence requires a browser. " +
         "(The `idb` library depends on the browser IndexedDB API.)",

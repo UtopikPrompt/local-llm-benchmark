@@ -3,6 +3,7 @@
 	import { BenchmarkError } from '$lib/errors.js';
 	import { DEFAULTS } from '$lib/config.js';
 	import { loadEngines, saveEngines } from '$lib/storage/index.js';
+	import { makeEngine } from '$lib/engines/index.js';
 	import { buildDefaultCorpus } from '$lib/corpus/tasks.js';
 	import type { EngineConfig, JudgeConfig } from '$lib/config.js';
 	import type { BenchmarkConfig } from '$lib/config.js';
@@ -53,9 +54,53 @@
 		}
 	}
 
+$: if (ready && engineBaseUrl) {
+		if (!fetchingModels) {
+			// Reactive statements can't be async; defer the fetch so the
+			// await runs outside the reactive context.
+			setTimeout(fetchModels, 0);
+		}
+	}
+
+	async function fetchModels(): Promise<void> {
+		fetchingModels = true;
+		modelsError = '';
+		modelOptions = [];
+		try {
+			const engine = makeEngine({
+				name: engineName,
+				base_url: engineBaseUrl,
+				model: engineModel,
+				timeout,
+				max_concurrent,
+			});
+			const models = await engine.list_models();
+			// Deduplicate; keep order (first occurrence wins).
+			const seen = new Set<string>();
+			for (const id of models) {
+				if (!seen.has(id)) {
+					seen.add(id);
+					modelOptions.push({ id, label: id || engineBaseUrl });
+				}
+			}
+			if (!modelOptions.some((m) => m.id === engineModel)) {
+				modelOptions.push({ id: engineModel, label: engineModel });
+			}
+		} catch (error) {
+			modelsError = error instanceof BenchmarkError
+				? error.message
+				: String(error);
+		} finally {
+			fetchingModels = false;
+		}
+	}
+
 	let engineName = DEFAULTS.engine_base_url;
 	let engineBaseUrl = DEFAULTS.engine_base_url;
 	let engineModel = DEFAULTS.engine_model;
+	let modelOptions: Array<{ id: string; label: string }> = [];
+	let fetchingModels = false;
+	let modelsError = '';
 	let judgeName = DEFAULTS.judge_base_url;
 	let judgeBaseUrl = DEFAULTS.judge_base_url;
 	let judgeModel = DEFAULTS.judge_model;
@@ -193,7 +238,17 @@ async function persistConfig(): Promise<void> {
 	</div>
 	<div class="field">
 			<label>Model
-				<input bind:value={engineModel} placeholder="llama3" />
+				{#if fetchingModels}
+					<span class="spinner">Loading models&hellip;</span>
+				{:else if modelsError}
+					<span class="error">{modelsError}</span>
+				{/if}
+				<select bind:value={engineModel}>
+					<option value="" disabled>Select model</option>
+					{#each modelOptions as option}
+						<option value={option.id}>{option.label}</option>
+					{/each}
+				</select>
 			</label>
 	</div>
 </div>
@@ -329,6 +384,15 @@ async function persistConfig(): Promise<void> {
 	}
 	.checkbox {
 		font-weight: normal;
+	}
+	.spinner {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		color: var(--color-muted);
+	}
+	.error {
+		color: var(--color-danger);
 	}
 	.actions {
 		display: flex;

@@ -64,10 +64,11 @@ body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 20px;
-  transition: transform 0.2s ease;
+  margin: 10px;
+  /* transition: transform 0.2s ease; */
 }
 .card:hover {
-  transform: translateY(-2px);
+  /* transform: translateY(-2px); */
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 

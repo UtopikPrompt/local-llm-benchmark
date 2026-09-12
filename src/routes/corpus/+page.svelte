@@ -73,11 +73,6 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 	async function persistCorpus(): Promise<void> {
 		await saveCorpus(corpus);
 	}
-
-	async function save(): Promise<void> {
-		await persistCorpus();
-		status = 'saved';
-	}
 </script>
 
 <div class="page-header">
@@ -108,7 +103,6 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 	</ul>
 	<div class="actions">
 		<button class="btn secondary" on:click={resetToDefaults}>Reset to defaults</button>
-		<button class="btn" on:click={save}>Save corpus</button>
 	</div>
 </div>
 

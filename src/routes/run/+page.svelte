@@ -69,7 +69,6 @@
 	let timeout = DEFAULTS.timeout;
 	let useJudge = false;
 
-	let saving = false;
 	let running = false;
 	let status = '';
 	let rows: Row[] = [];
@@ -106,11 +105,6 @@ async function persistConfig(): Promise<void> {
 			output: null,
 		};
 		await saveEngines(config.engines);
-	}
-
-	async function saveConfig(): Promise<void> {
-		await persistConfig();
-		status = 'config saved';
 	}
 
 	function buildTasks(): Task[] {
@@ -283,7 +277,6 @@ async function persistConfig(): Promise<void> {
 <div class="card">
 	<h2 class="panel-title">Actions</h2>
 	<div class="actions">
-		<button class="btn secondary" on:click={() => saveConfig()} disabled={saving}>Save config</button>
 		<button class="btn" on:click={() => runBenchmark()} disabled={running}>Run benchmark</button>
 	</div>
 	{#if status}

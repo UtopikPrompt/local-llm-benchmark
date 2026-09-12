@@ -5,7 +5,7 @@
 import { openDB, type IDBPDatabase } from "idb";
 
 const DB_NAME = "local-llm-benchmark";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 interface Stores {
   rows: "rows";
@@ -14,6 +14,7 @@ interface Stores {
   models: "models";
   tasks: "tasks";
   corpus: "corpus";
+  params: "params";
 }
 
 type StoreName = keyof Stores;
@@ -34,6 +35,7 @@ const STORES = {
   models: "models",
   tasks: "tasks",
   corpus: "corpus",
+  params: "params",
 } as const;
 
 let dbPromise: Promise<IDBPDatabase<StoresSchema>> | null = null;

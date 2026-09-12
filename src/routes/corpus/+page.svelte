@@ -151,13 +151,6 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 {/if}
 
 <style>
-	.page-header h1 {
-		margin-bottom: 0.25rem;
-	}
-	.subtitle {
-		margin-top: 0;
-		color: var(--color-muted);
-	}
 	.task {
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
@@ -183,34 +176,5 @@ import type { Category, Task } from '$lib/corpus/tasks.js';
 	}
 	.task-expected {
 		overflow: hidden;
-	}
-	.actions {
-		display: flex;
-		gap: 0.5rem;
-		margin-top: 1rem;
-	}
-	.field {
-		margin-bottom: 1rem;
-	}
-	.field label {
-		display: block;
-		font-weight: 500;
-		margin-bottom: 0.25rem;
-	}
-	.field input,
-	.field select,
-	.field textarea {
-		width: 100%;
-		padding: 0.45rem 0.6rem;
-		border: 1px solid var(--color-border);
-		border-radius: 6px;
-		font-size: 0.9rem;
-	}
-	.field textarea {
-		min-height: 6rem;
-	}
-	.progress-note {
-		margin-top: 1rem;
-		color: var(--color-muted);
 	}
 </style>

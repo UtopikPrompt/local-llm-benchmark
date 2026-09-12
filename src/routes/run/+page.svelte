@@ -2,7 +2,16 @@
 	import { onMount } from 'svelte';
 	import { BenchmarkError } from '$lib/errors.js';
 	import { DEFAULTS } from '$lib/config.js';
-	import { loadEngines, loadTasks, saveEngines, saveTasks } from '$lib/storage/index.js';
+	import {
+loadEngines,
+	loadTasks,
+	loadJudges,
+	saveEngines,
+	saveJudges,
+	saveTasks,
+	saveParams,
+	loadParams,
+} from '$lib/storage/index.js';
 	import { makeEngine } from '$lib/engines/index.js';
 	import { buildDefaultCorpus } from '$lib/corpus/tasks.js';
 
@@ -16,11 +25,26 @@ let engines: EngineConfig[] = [];
 	// Save button is required.
 	let ready = true;
 	let savedSignature = '';
-	let saveTimer = 0;
+	let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 	onMount(async () => {
-		engines = await loadEngines();
-		taskIds = (await loadTasks()).map((t) => t.id).join('\n');
+		const [engines_, tasks_, judges_, params_] = await Promise.all([
+			loadEngines(),
+			loadTasks(),
+			loadJudges(),
+			loadParams(),
+		]);
+		engines = engines_;
+		taskIds = tasks_.map((t) => t.id).join('\n');
+		engineName = engines_.length ? engines_[0].name : DEFAULTS.engine_base_url;
+		engineBaseUrl = engines_.length ? engines_[0].base_url : DEFAULTS.engine_base_url;
+		engineModel = engines_.length ? engines_[0].model : DEFAULTS.engine_model;
+		judgeName = judges_.map((j) => j.name).join('\n');
+		judgeBaseUrl = judges_.map((j) => j.base_url).join('\n');
+		judgeModel = judges_.map((j) => j.model).join('\n');
+		trials = params_.trials;
+		max_concurrent = params_.max_concurrent;
+		timeout = params_.timeout;
 		savedSignature = currentSignature();
 	});
 
@@ -43,17 +67,22 @@ let engines: EngineConfig[] = [];
 		].join('\u0000');
 	}
 
-	$: {
-		if (ready && typeof document !== 'undefined') {
-			if (savedSignature !== currentSignature()) {
-				console.log('[DEBUG] save triggered', currentSignature().slice(0, 50));
-				savedSignature = currentSignature();
-				clearTimeout(saveTimer);
-				saveTimer = setTimeout(async () => {
-					await persistConfig();
-				}, 400);
-			}
+	function scheduleSave(): void {
+		// Debounced write to IndexedDB on any field change. Driven by explicit
+		// `input`/`change` event listeners on the form (see markup), NOT by the
+		// reactive `$:` statement below, because `bind:value` does not reliably
+		// forward native input events to Svelte state on every input type —
+		// relying on the reactive diff would silently drop keystrokes.
+		if (saveTimer) {
+			clearTimeout(saveTimer);
 		}
+		saveTimer = setTimeout(async () => {
+			try {
+				await persistConfig();
+			} finally {
+				saveTimer = null;
+			}
+		}, 400);
 	}
 
 let lastFetchUrl = '';
@@ -161,8 +190,7 @@ async function persistConfig(): Promise<void> {
 		await Promise.all([
 			saveEngines(config.engines),
 			saveJudges(config.judges),
-			saveModels(config.models),
-			saveTasks(buildTasks()),
+			saveTasks(config.tasks),
 		]);
 	}
 
@@ -242,12 +270,12 @@ async function persistConfig(): Promise<void> {
 	<h2 class="panel-title">Engine</h2>
 	<div class="field">
 			<label>Engine name
-				<input bind:value={engineName} placeholder="Ollama" />
+				<input bind:value={engineName} placeholder="Ollama" on:input={scheduleSave} />
 			</label>
 	</div>
 	<div class="field">
 			<label>Base URL
-				<input bind:value={engineBaseUrl} placeholder="http://localhost:11434" />
+				<input bind:value={engineBaseUrl} placeholder="http://localhost:11434" on:input={scheduleSave} />
 			</label>
 	</div>
 	<div class="field">
@@ -257,7 +285,7 @@ async function persistConfig(): Promise<void> {
 				{:else if modelsError}
 					<span class="error">{modelsError}</span>
 				{/if}
-				<select bind:value={engineModel}>
+				<select bind:value={engineModel} on:change={scheduleSave}>
 					<option value="" disabled>Select model</option>
 					{#each modelOptions as option}
 						<option value={option.id}>{option.label}</option>
@@ -278,17 +306,17 @@ async function persistConfig(): Promise<void> {
 	{#if useJudge}
 		<div class="field">
 			<label>Judge name
-				<input bind:value={judgeName} placeholder="judge" />
+					<input bind:value={judgeName} placeholder="judge" on:input={scheduleSave} />
 			</label>
 		</div>
 		<div class="field">
 			<label>Judge base URL
-				<input bind:value={judgeBaseUrl} placeholder="http://localhost:11434" />
+					<input bind:value={judgeBaseUrl} placeholder="http://localhost:11434" on:input={scheduleSave} />
 			</label>
 		</div>
 		<div class="field">
 			<label>Judge model
-				<input bind:value={judgeModel} placeholder="gamma4:e4b" />
+					<input bind:value={judgeModel} placeholder="gamma4:e4b" on:input={scheduleSave} />
 			</label>
 		</div>
 	{/if}
@@ -298,7 +326,7 @@ async function persistConfig(): Promise<void> {
 	<h2 class="panel-title">Tasks</h2>
 	<div class="field">
 			<label>Category
-				<select bind:value={taskCategory}>
+				<select bind:value={taskCategory} on:change={scheduleSave}>
 					<option value="all">all</option>
 					<option value="doc">doc</option>
 					<option value="code">code</option>
@@ -309,17 +337,17 @@ async function persistConfig(): Promise<void> {
 	</div>
 	<div class="field">
 		<label>Task IDs (one per line)
-			<textarea bind:value={taskIds} placeholder="doc-rest-api" rows="6"></textarea>
+				<textarea bind:value={taskIds} placeholder="doc-rest-api" rows="6" on:input={scheduleSave}></textarea>
 		</label>
 	</div>
 	<div class="field">
 		<label>Systems (one per line)
-			<textarea bind:value={taskSystems} rows="3"></textarea>
+				<textarea bind:value={taskSystems} rows="3" on:input={scheduleSave}></textarea>
 		</label>
 	</div>
 	<div class="field">
 		<label>Expected answers (one per line)
-			<textarea bind:value={taskExpected} rows="3"></textarea>
+				<textarea bind:value={taskExpected} rows="3" on:input={scheduleSave}></textarea>
 		</label>
 	</div>
 </div>
@@ -328,17 +356,17 @@ async function persistConfig(): Promise<void> {
 	<h2 class="panel-title">Parameters</h2>
 	<div class="field">
 		<label>Trials
-			<input type="number" bind:value={trials} min="1" />
+				<input type="number" bind:value={trials} min="1" on:input={scheduleSave} />
 		</label>
 	</div>
 	<div class="field">
 		<label>Max concurrent
-			<input type="number" bind:value={max_concurrent} min="1" />
+				<input type="number" bind:value={max_concurrent} min="1" on:input={scheduleSave} />
 		</label>
 	</div>
 	<div class="field">
 		<label>Timeout (s)
-			<input type="number" bind:value={timeout} min="1" />
+				<input type="number" bind:value={timeout} min="1" on:input={scheduleSave} />
 		</label>
 	</div>
 </div>

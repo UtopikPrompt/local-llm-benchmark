@@ -106,6 +106,26 @@ export async function loadCorpus(): Promise<Corpus> {
   return { tasks: buildDefaultCorpus() };
 }
 
+// Scalar task parameters (trials, max_concurrent, timeout). Stored as a single
+// object under the `params` store so all three round-trip together on load.
+export interface Params {
+  trials: number;
+  max_concurrent: number;
+  timeout: number;
+}
+
+export async function saveParams(params: Params): Promise<void> {
+  await db.put("params", 0, params);
+}
+
+export async function loadParams(): Promise<Params> {
+  const stored = await db.get("params", 0);
+  if (stored) {
+    return stored as Params;
+  }
+  return { trials: 3, max_concurrent: 1, timeout: 60 };
+}
+
 // --- JSON export / import (optional) ---------------------------------------
 // Serializes rows + config to a plain, JSON-serializable snapshot and
 // restores it. Used for downloading/uploading benchmark state.

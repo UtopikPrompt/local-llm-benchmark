@@ -6,11 +6,28 @@
       "label": "start-server",
       "command": "pnpm run dev",
       "isBackground": true,
-      "group": "background",
-      "problemMatcher": "none",
+      "group": "test",
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": ".*(ready in|Local:).*"
+        }
+      },
       "presentation": {
         "reveal": "never"
       }
+    },
+    {
+      "label": "terminate-server",
+      "type": "shell",
+      "command": "echo 'Cleaning up server...'",
+      "problemMatcher": [],
+      "presentation": { "reveal": "never" }
     }
   ]
 }

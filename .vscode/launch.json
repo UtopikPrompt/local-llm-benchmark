@@ -6,7 +6,8 @@
       "type": "editor-browser",
       "request": "launch",
       "url": "http://127.0.0.1:5173",
-      "preLaunchTask": "start-server"
+      "preLaunchTask": "start-server",
+      "postDebugTask": "terminate-server"
     },
     {
       "name": "Debug Dashboard in Edge",

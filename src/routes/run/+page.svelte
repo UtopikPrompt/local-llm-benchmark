@@ -46,6 +46,7 @@ let engines: EngineConfig[] = [];
 	$: {
 		if (ready && typeof document !== 'undefined') {
 			if (savedSignature !== currentSignature()) {
+				console.log('[DEBUG] save triggered', currentSignature().slice(0, 50));
 				savedSignature = currentSignature();
 				clearTimeout(saveTimer);
 				saveTimer = setTimeout(async () => {

@@ -10,7 +10,6 @@
       "extensions": [
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
-        "astro.build.svelte",
         "Ollama.ollama",
         "svelte.svelte-vscode",
         "ms-vscode.js-debug",

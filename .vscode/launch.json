@@ -5,7 +5,7 @@
       "name": "Debug Dashboard in Editor",
       "type": "editor-browser",
       "request": "launch",
-      "url": "http://127.0.0.1:5173",
+      "url": "http://localhost:5173",
       "preLaunchTask": "start-server",
       "postDebugTask": "terminate-server"
     },
@@ -13,14 +13,18 @@
       "name": "Debug Dashboard in Edge",
       "type": "msedge",
       "request": "launch",
-      "url": "http://127.0.0.1:5173",
+      "url": "http://localhost:5173",
       "preLaunchTask": "start-server"
     }
   ],
   "compounds": [
     {
       "name": "Dashboard in Browser",
-      "configurations": ["Debug Dashboard in Editor", "Debug Dashboard in Edge"]
+      "configurations": [
+        "Debug Dashboard in Editor",
+        "Debug Dashboard in Edge"
+      ],
+      "stopAll": true
     }
   ]
 }

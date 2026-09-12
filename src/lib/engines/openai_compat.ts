@@ -43,6 +43,11 @@ export class OpenAICompatEngine implements Engine {
     return this.config.base_url;
   }
 
+  /** Whether this engine instance runs inside the browser (set from the SvelteKit `browser` flag). */
+  get browser(): boolean {
+    return this.config.browser ?? false;
+  }
+
   get timeout(): number {
     return this.config.timeout;
   }
@@ -141,7 +146,11 @@ export class OpenAICompatEngine implements Engine {
   }
 
   list_models(): Promise<string[]> {
-    return fetch(joinUrl(this.config.base_url, "v1/models"))
+    return fetch(
+      this.browser
+        ? joinUrl("http://localhost:5173", "v1/models")
+        : joinUrl(this.config.base_url, "v1/models"),
+    )
       .then((response) => {
         if (response.status !== 200) {
           return [];

@@ -9,9 +9,7 @@
       "group": "test",
       "problemMatcher": {
         "owner": "custom",
-        "pattern": {
-          "regexp": "^$"
-        },
+        "pattern": { "regexp": "^$" },
         "background": {
           "activeOnStart": true,
           "beginsPattern": ".*",
@@ -19,15 +17,29 @@
         }
       },
       "presentation": {
-        "reveal": "never"
+        "reveal": "never",
+        "close": true,
+        "panel": "shared"
       }
     },
     {
       "label": "terminate-server",
       "type": "shell",
-      "command": "echo 'Cleaning up server...'",
+      "command": "echo ${input:terminate}",
       "problemMatcher": [],
-      "presentation": { "reveal": "never" }
+      "presentation": {
+        "reveal": "never",
+        "close": true,
+        "panel": "shared"
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "terminate",
+      "type": "command",
+      "command": "workbench.action.tasks.terminate",
+      "args": "terminateAll"
     }
   ]
 }

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import { BenchmarkError } from '$lib/errors.js';
 	import { DEFAULTS } from '$lib/config.js';
 	import {
@@ -87,7 +88,7 @@ let engines: EngineConfig[] = [];
 
 let lastFetchUrl = '';
 
-$: if (ready && engineBaseUrl) {
+$: if (browser && ready && engineBaseUrl) {
 		if (lastFetchUrl !== engineBaseUrl) {
 			// Reactive statements can't be async; defer the fetch so the
 			// await runs outside the reactive context. This only re-runs when
@@ -101,35 +102,40 @@ $: if (ready && engineBaseUrl) {
 		loadingModels = true;
 		modelsError = '';
 		modelOptions = [];
-		try {
-			const engine = makeEngine({
-				name: engineName,
-				base_url: engineBaseUrl,
-				model: engineModel,
-				timeout,
-				max_concurrent,
-			});
-			const models = await engine.list_models();
-			// Deduplicate; keep order (first occurrence wins).
-			const seen = new Set<string>();
-			for (const id of models) {
-				if (!seen.has(id)) {
-					seen.add(id);
-					modelOptions.push({ id, label: id || engineBaseUrl });
-				}
+		let dbg: Array<{ phase: string; name?: string; url?: string; count?: number; err?: string }> =
+			(window as any).__dbg;
+		if (!dbg) (window as any).__dbg = dbg = [];
+		dbg.push({ phase: 'start', name: engineName, url: engineBaseUrl });
+		const engine = makeEngine({
+			name: engineName,
+			base_url: engineBaseUrl,
+			model: engineModel,
+			timeout,
+			max_concurrent,
+			browser,
+		});
+		const models = await engine.list_models();
+		dbg.push({ phase: 'result', count: models.length, err: modelsError, url: engineBaseUrl });
+		(window as any).__snap = {
+			name: engineName,
+			url: engineBaseUrl,
+			model: engineModel,
+			options: modelOptions.length,
+			err: modelsError,
+		};
+		// Deduplicate; keep order (first occurrence wins).
+		const seen = new Set<string>();
+		for (const id of models) {
+			if (!seen.has(id)) {
+				seen.add(id);
+				modelOptions.push({ id, label: id || engineBaseUrl });
 			}
-			if (!modelOptions.some((m) => m.id === engineModel)) {
-				modelOptions.push({ id: engineModel, label: engineModel });
-			}
-		} catch (error) {
-			modelsError = error instanceof BenchmarkError
-				? error.message
-				: String(error);
-		} finally {
-			// `loadingModels` is not read by the reactive guard (that reads
-			// `lastFetchUrl`), so this does not re-trigger the fetch.
-			loadingModels = false;
 		}
+		if (!modelOptions.some((m) => m.id === engineModel)) {
+			modelOptions.push({ id: engineModel, label: engineModel });
+		}
+		dbg.push({ phase: 'options', count: modelOptions.length, err: modelsError });
+		loadingModels = false;
 	}
 
 	let engineName = DEFAULTS.engine_base_url;
@@ -279,19 +285,24 @@ async function persistConfig(): Promise<void> {
 			</label>
 	</div>
 	<div class="field">
-			<label>Model
-				{#if loadingModels}
-					<span class="spinner">Loading models&hellip;</span>
-				{:else if modelsError}
-					<span class="error">{modelsError}</span>
-				{/if}
+		<label>Model
+			{#if loadingModels}
+				<span class="spinner">Loading models&hellip;</span>
+			{:else if modelsError}
+				<span class="error">{modelsError}</span>
+			{/if}
+			<div class="model-row">
 				<select bind:value={engineModel} on:change={scheduleSave}>
 					<option value="" disabled>Select model</option>
 					{#each modelOptions as option}
 						<option value={option.id}>{option.label}</option>
 					{/each}
 				</select>
-			</label>
+				<button class="icon-btn" title="Refresh models" aria-label="Refresh models" on:click={fetchModels}>
+					<svg viewBox="0 0 24 24" width="20" height="20"><path d="M17.65 6.35A7.95 7.95 0 0012 4a8 8 0 108 8h-2.5A5.5 5.5 0 1112 6c1.65 0 3.14.7 4.24 1.8L13 11h7V4l-2.35 2.35z"></path></svg>
+				</button>
+			</div>
+		</label>
 	</div>
 </div>
 
@@ -435,6 +446,35 @@ async function persistConfig(): Promise<void> {
 	}
 	.error {
 		color: var(--color-danger);
+	}
+	.model-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	.icon-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex: none;
+		width: 2.25rem;
+		height: 2.25rem;
+		background: var(--color-surface-2);
+		color: var(--color-text);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		cursor: pointer;
+		opacity: var(--color-disabled, 0.6);
+	}
+	.icon-btn:hover {
+		opacity: 1;
+	}
+	.icon-btn svg {
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 2;
+		stroke-linecap: round;
+		stroke-linejoin: round;
 	}
 	.actions {
 		display: flex;

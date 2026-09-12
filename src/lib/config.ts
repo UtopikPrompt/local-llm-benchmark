@@ -5,6 +5,8 @@ export interface EngineConfig {
   model: string;
   timeout: number;
   max_concurrent: number;
+  /** Whether the engine runs in the browser (enabled via `browser` flag). */
+  browser?: boolean;
 }
 
 // Judge configuration: an optional model used for quality scoring.

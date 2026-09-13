@@ -39,9 +39,6 @@
         <main id="content-area">
             <!-- Dashboard / overview panel -->
             <section id="view-dashboard" class="view-panel" data-view="dashboard">
-                <!-- <div class="panel-toolbar">
-                    <span class="panel-subtitle">Benchmark results &amp; overview</span>
-                </div> -->
                 <div class="panel-body">
 
                     <!-- Left sidebar: engine + model selection -->
@@ -65,35 +62,22 @@
 
             <!-- Benchmark configuration panel -->
             <section id="view-benchmark" class="view-panel" data-view="benchmark">
-                <!-- <div class="panel-toolbar">
-                    <span class="panel-title">Benchmark</span>
-                    <span class="panel-subtitle">Configure engine, model &amp; run settings</span>
-                </div> -->
                 <div class="panel-body">
-                    <div class="bench-container">
-                        <div class="bench-form">
-                            <label class="bench-field">
-                                <span class="bench-field-label">Engine</span>
-                                <select id="engine-select" class="bench-select">
-                                    <option value="" disabled hidden></option>
-                                </select>
-                            </label>
-                            <label class="bench-field">
-                                <span class="bench-field-label">Model</span>
-                                <select id="model-select" class="bench-select">
-                                    <option value="" disabled hidden></option>
-                                </select>
-                            </label>
-                            <div class="bench-actions">
-                                <button id="btn-run-benchmark" class="btn-primary">Run Benchmark</button>
-                            </div>
+
+                    <!-- Left sidebar: engine + model selection -->
+                    <aside id="side-menu">
+                        <div class="side-actions">
+                            <button class="refresh-models" id="refresh-models">
+                                <span class="icon icon-refresh"></span>
+                                <span class="label">Refresh Engines</span>
+                            </button>
                         </div>
-                        <div id="bench-status" class="bench-status">
-                            <div id="bench-status-text" class="bench-status-text">Configure an engine and model, then run.
-                            </div>
-                            <div id="bench-progress" class="bench-progress">
-                                <div id="bench-progress-bar" class="bench-progress-bar" style="width: 0%"></div>
-                            </div>
+                        <div id="engine-list"></div>
+                    </aside>
+
+                    <div class="results-scroll">
+                        <div id="results-container">
+                            <div class="results-table" id="results-table"></div>
                         </div>
                     </div>
                 </div>
@@ -101,10 +85,6 @@
 
             <!-- Challenges / tasks panel -->
             <section id="view-challenges" class="view-panel hidden" data-view="challenges">
-                <!-- <div class="panel-toolbar">
-                    <span class="panel-title">Challenges</span>
-                    <span class="panel-subtitle">Tasks &amp; corpus</span>
-                </div> -->
                 <div class="panel-body">
                     <div class="challenges-container">
                         <div class="challenges-toolbar">

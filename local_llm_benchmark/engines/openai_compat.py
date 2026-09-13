@@ -40,32 +40,58 @@ def _strip_content(message: dict) -> str:
     return message.get("content") or message.get("reasoning") or ""
 
 
-def _stream_tokens(data: dict, stop: Optional[str]) -> AsyncIterator[str]:
-    """Yield tokens from a streaming OpenAI response.
+def _extract_token(parsed: Any) -> Optional[str]:
+    """Extract the next token string from a parsed NDJSON/SSE object.
 
-    ``*data*`` is the raw stream (e.g. ``response.iter_lines()``), i.e. an
-    iterable of SSE text lines such as ``data: {"choices":[...]}``. Each line is
-    parsed to JSON; the reasoning chain is read from the ``reasoning`` delta
-    field (e.g. a local ``ornith-1.5`` model) and the answer from ``content``.
-    Both fields are captured so the benchmark measures the full token stream.
+    Handles three shapes:
+
+    * **OpenAI SSE delta** (``{"choices":[{"delta":{"content":"x"}}]}``) — a
+      reasoning model's token also appears under ``reasoning``.
+    * **Ollama NDJSON** — each line is a *complete* delta object
+      (``{"model":..., "message":{"role":"assistant", "content":"x"},
+      "done":...}``) with the token at ``message.content`` (or ``reasoning``).
+      There is no ``choices`` wrapper and no ``data:`` prefix.
+      A reasoning model (``gemma4:e2b``) also emits every answer token in the
+      top-level ``thinking`` field during the reasoning phase, where
+      ``message.content`` is still empty.
+    """
+    if isinstance(parsed, dict):
+        delta = parsed.get("choices", [{}])[0].get("delta") or {}
+        if delta.get("content") is not None or delta.get("reasoning") is not None:
+            return delta.get("content") or delta.get("reasoning")
+        if (parsed.get("message", {}).get("content") is not None or parsed.get("reasoning") is not None or parsed.get("thinking") is not None):
+            return parsed.get("message", {}).get("content") or parsed.get("reasoning") or parsed.get("thinking")
+    return None
+
+
+def _stream_tokens(data: dict, stop: Optional[str]) -> AsyncIterator[str]:
+    """Yield tokens from a streaming response (OpenAI SSE or Ollama NDJSON).
+
+    ``*data*`` is an iterable of stream items. Each item is either a parsed
+    JSON object (from ``_aiter_ollama``) or raw SSE/NDJSON text; either way the
+    reasoning chain (``reasoning``) and the answer (``content``) are captured so
+    the benchmark measures the full token stream.
     """
     for line in data:
-        if isinstance(line, dict):  # already parsed (defensive)
-            delta = line.get("choices", [{}])[0].get("delta") or {}
-            token = delta.get("content") or delta.get("reasoning")
+        if isinstance(line, dict):  # already parsed (Ollama NDJSON or defensive)
+            token = _extract_token(line)
         else:  # SSE text line: "data: {...}"
             line = line.strip()
-            if not line.startswith("data:") or line == "data: [DONE]":
-                continue
-            line = line[len("data:"):].strip()
-            try:
-                parsed = json.loads(line)
-            except (json.JSONDecodeError, ValueError):
-                continue
-            if not isinstance(parsed, dict):
-                continue
-            delta = parsed.get("choices", [{}])[0].get("delta") or {}
-            token = delta.get("content") or delta.get("reasoning")
+            if line.startswith("data:"):
+                line = line[len("data:"):].strip()
+                if line == "[DONE]":
+                    continue
+                try:
+                    parsed = json.loads(line)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+            else:
+                # Raw NDJSON line (no SSE prefix) — Ollama streaming.
+                try:
+                    parsed = json.loads(line)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+            token = _extract_token(parsed)
         if token:
             yield token
     if stop is not None:
@@ -79,6 +105,24 @@ class OpenAICompatEngine(Engine):
         self.config = engine
         self._client: Optional[httpx.AsyncClient] = None
         self._model: Optional[str] = None
+
+    async def _aiter_ollama(self, lines: AsyncIterator[str]) -> AsyncIterator[Any]:
+        """Async iterator over Ollama NDJSON stream lines.
+
+        Ollama's ``application/x-ndjson`` stream is *not* SSE: each line is a
+        *complete* JSON object, not a ``data:`` prefixed delta. Parse each line
+        to a dict so the shared ``_extract_token`` logic can read both the
+        reasoning-phase ``thinking`` field and the answer-phase ``message.content``.
+        Unparseable lines (and the ``[DONE]`` terminator) are skipped.
+        """
+        async for line in lines:
+            line = line.strip()
+            if not line or line.startswith("data:") or line == "[DONE]":
+                continue
+            try:
+                yield json.loads(line)
+            except (json.JSONDecodeError, ValueError):
+                continue
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Return a lazily-created async HTTP client."""
@@ -101,6 +145,10 @@ class OpenAICompatEngine(Engine):
     ) -> AsyncIterator[str]:
         """Stream tokens from the remote engine.
 
+        Works against both the OpenAI-compatible SSE stream
+        (``POST /v1/chat/completions`` with ``choices[].delta``) and the
+        Ollama NDJSON stream (``POST /api/chat`` with ``message.content``).
+
         Graceful degradation: a server that is down, that lacks the
         ``/v1/models`` endpoint, or that streams a broken payload is treated as
         an empty list / no-op rather than raising.
@@ -110,20 +158,30 @@ class OpenAICompatEngine(Engine):
             payload: dict[str, Any] = {
                 "model": self._model or self.config.model,
                 "messages": messages,
-                "max_tokens": max_tokens,
                 "stream": stream,
             }
-            response = await client.post(
-                _build_url(self.config.base_url, "v1/chat/completions"),
-                json=payload,
-            )
-            response.raise_for_status()
             if stream:
-                for token in _stream_tokens(response.iter_lines(), stop=None):
+                # Ollama streams the model stream at ``/api/chat``.
+                response = await client.post(
+                    _build_url(self.config.base_url, "api/chat"),
+                    json=payload,
+                )
+                response.raise_for_status()
+                async for token in self._aiter_ollama(response.aiter_lines()):
                     yield token
             else:
+                # Non-streaming: Ollama's ``/api/generate`` returns a single
+                # ``{"model","context","message","prompt","done","usage"}``
+                # object (no ``choices``).
+                response = await client.post(
+                    _build_url(self.config.base_url, "api/generate"),
+                    json=payload,
+                )
+                response.raise_for_status()
                 data = response.json()
-                yield _strip_content(_strip_usage_response(data))
+                yield _strip_content(
+                    _strip_usage_response(data.get("response") or data)
+                )
         except (httpx.HTTPStatusError, httpx.RequestError, json.JSONDecodeError):
             # Graceful degradation: a missing endpoint or a bad stream must not
             # crash the benchmark. Yield nothing and return normally.

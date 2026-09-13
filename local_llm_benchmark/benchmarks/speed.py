@@ -81,7 +81,7 @@ async def benchmark_speed(
             )
 
     for _ in range(trials):
-        await _run()
+        rows.append(await _run())
 
     total_elapsed = time.perf_counter() - start
     for row in rows:

@@ -77,6 +77,9 @@ CSV_COLUMNS: tuple[str, ...] = (
     "judge",
     "task_id",
     "category",
+    "prompt",
+    "expected",
+    "output",
     "ttft_s",
     "tok_per_s",
     "iters_per_s",
@@ -84,4 +87,4 @@ CSV_COLUMNS: tuple[str, ...] = (
     "quality_deterministic",
     "quality_judge",
     "quality_note",
-)
+)  # noqa: E501  # must match Row.to_dict() exactly (16 fields)

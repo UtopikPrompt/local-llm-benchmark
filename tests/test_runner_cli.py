@@ -2,15 +2,23 @@
 
 The CLI's heavy lifting (running the benchmark) is async and would require
 network I/O, so we only test the synchronous helpers: :func:`_parse_args`,
-:func:`_build_config`, and :func:`default_output` wiring in :func:`main`.
+:func:`_build_config`, and :func:`default_output` wiring in :func:`main`, plus
+the ``--list-engines`` / ``--list-models`` listing commands that mirror the
+web Dashboard.
 """
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from local_llm_benchmark.config import BenchmarkConfig, EngineConfig
-from local_llm_benchmark.runner import _build_config, _parse_args
+from local_llm_benchmark.runner import (
+    _build_config,
+    _engines_for_listing,
+    _list_engines,
+    _list_models,
+    _parse_args,
+)
 
 
 def test_parse_args_defaults():
@@ -136,10 +144,12 @@ def test_main_writes_report(tmp_path, capsys, monkeypatch):
         )
     ]
     output = tmp_path / "report.json"
-    monkeypatch.setattr(runner, "run_benchmark", __import__("unittest.mock").MagicMock(return_value=rows))
+    # main runs ``anyio.run(run_benchmark, config)``, which *awaits* the result.
+    # Mocking ``anyio.run`` returns the rows directly without awaiting a list.
+    monkeypatch.setattr(runner.anyio, "run", MagicMock(return_value=rows))
     monkeypatch.setattr("local_llm_benchmark.runner.default_output", lambda fmt="json": str(output))
-    monkeypatch.setattr("local_llm_benchmark.runner.write_report", __import__("unittest.mock").MagicMock())
-    monkeypatch.setattr("local_llm_benchmark.runner.print_summary", __import__("unittest.mock").MagicMock())
+    monkeypatch.setattr("local_llm_benchmark.runner.write_report", MagicMock())
+    monkeypatch.setattr("local_llm_benchmark.runner.print_summary", MagicMock())
 
     argv = [
         "--engine", "ollama",
@@ -150,3 +160,70 @@ def test_main_writes_report(tmp_path, capsys, monkeypatch):
     runner.main(argv)
     # write_report was called with the output path.
     assert "write_report" in dir(runner)
+
+
+def test_parse_args_list_engines():
+    """--list-engines is a store_true flag."""
+    args = _parse_args(["--list-engines"])
+    assert args.list_engines is True
+
+
+def test_engines_for_listing_from_config(tmp_path):
+    """With a config file the listing uses the engines from that config."""
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "engines:\n"
+        "- name: ollama\n  base_url: http://a:11434\n  model: llama3\n"
+    )
+    args = _parse_args(["--config", str(config_file)])
+    assert _engines_for_listing(args) == [
+        EngineConfig(name="ollama", base_url="http://a:11434", model="llama3")
+    ]
+
+
+def test_engines_for_listing_defaults():
+    """With no args we fall back to a single default engine."""
+    args = _parse_args([])
+    assert _engines_for_listing(args) == [
+        EngineConfig(name="engine", base_url="", model="")
+    ]
+
+
+def test_list_engines_prints_headers(tmp_path, capsys, monkeypatch):
+    """_list_engines iterates engines and prints one header per engine."""
+    import local_llm_benchmark.runner as runner
+
+    engines = [
+        EngineConfig(name="ollama", base_url="http://a:11434", model="llama3"),
+        EngineConfig(name="steuve", base_url="http://b:11434", model="gemma4:e2b"),
+    ]
+    monkeypatch.setattr(runner, "_engines_for_listing", lambda args: engines)
+    args = _parse_args(["--list-engines", "--base-url", "http://a:11434"])
+    runner._list_engines(args)
+    out = capsys.readouterr().out
+    assert "# ollama" in out
+    assert "# steuve" in out
+    assert "http://a:11434" in out
+    assert "gemma4:e2b" in out
+
+
+def test_list_models_per_engine(tmp_path, capsys, monkeypatch):
+    """_list_models lists models per engine, mirroring renderModelCheckboxes."""
+    import local_llm_benchmark.runner as runner
+
+    engines = [
+        EngineConfig(name="ollama", base_url="http://a:11434", model="llama3"),
+    ]
+    monkeypatch.setattr(runner, "_engines_for_listing", lambda args: engines)
+# anyio.run(_list_and_close, engine) AWAITS the result, so the stub must
+# be an async callable returning the models, not a raw list.
+    async def fake_list_and_close(*_args, **_kwargs):
+        return ["llama3", "llama3:8b"]
+    monkeypatch.setattr(runner, "_list_and_close", fake_list_and_close)
+    args = _parse_args(["--models"])
+    runner._list_models(args)
+    out = capsys.readouterr().out
+    assert "# ollama" in out
+    # Each model is emitted as a checkbox line with the model name.
+    assert "+ llama3" in out
+    assert "+ llama3:8b" in out

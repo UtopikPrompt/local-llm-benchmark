@@ -120,7 +120,8 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument("--engine", default="engine", help="Engine name from a config file.")
     parser.add_argument("--base-url", help="Base URL of the OpenAI-compatible engine.")
     parser.add_argument("--model", help="Model served by the engine.")
-    parser.add_argument("--models", action="store_true", help="List models for --base-url and exit.")
+    parser.add_argument("--models", action="store_true", help="List models for each engine (config or --base-url) and exit.")
+    parser.add_argument("--list-engines", action="store_true", help="List configured engines (config or --engine/--base-url) and exit.")
     parser.add_argument("--judge", help="Judge name from a config file.")
     parser.add_argument("--judge-url", help="Base URL of the judge engine.")
     parser.add_argument("--judge-model", help="Model served by the judge engine.")
@@ -192,6 +193,10 @@ def main(argv: Optional[List[str]] = None) -> None:
         serve_proxy(EngineConfig(name="serve", base_url=args.base_url, model=args.model))
         return
 
+    if args.list_engines:
+        _list_engines(args)
+        return
+
     if args.models:
         _list_models(args)
         return
@@ -214,13 +219,70 @@ def _run_selector(args: argparse.Namespace) -> None:
     print("\n".join(models))
 
 
-def _list_models(args: argparse.Namespace) -> None:
-    """List models for --base-url and exit."""
+def _list_engines(args: argparse.Namespace) -> None:
+    """List configured engines, mirroring the web Dashboard.
+
+    Iterates over every engine in ``--config`` (falling back to a single
+    ``--engine``/``--base-url`` pair when no config file is given) and prints
+    a header for each one, exactly like the Dashboard's per-engine section.
+    """
     from local_llm_benchmark.engines.openai_compat import OpenAICompatEngine
 
-    engine_obj = OpenAICompatEngine(EngineConfig(name="models", base_url=args.base_url, model=""))
-    models = anyio.run(_list_and_close, engine_obj)
-    print("\n".join(models))
+    engines = _engines_for_listing(args)
+    for engine_config in engines:
+        print(f"# {engine_config.name}")
+        if args.base_url:
+            print(f"  base_url: {engine_config.base_url}")
+        if engine_config.model:
+            print(f"  model: {engine_config.model}")
+        print()
+
+
+def _list_models(args: argparse.Namespace) -> None:
+    """List models for each engine, mirroring the web Dashboard.
+
+    For every engine in ``--config`` (falling back to a single
+    ``--engine``/``--base-url`` pair when no config file is given) queries
+    ``list_models`` and prints an expandable section with model checkboxes,
+    matching the Dashboard's ``renderModelCheckboxes`` behaviour.
+    """
+    from local_llm_benchmark.engines.openai_compat import OpenAICompatEngine
+
+    engines = _engines_for_listing(args)
+    for engine_config in engines:
+        engine_obj = OpenAICompatEngine(engine_config)
+        models = anyio.run(_list_and_close, engine_obj)
+        print(f"# {engine_config.name}")
+        if args.base_url:
+            print(f"  base_url: {engine_config.base_url}")
+        if engine_config.model:
+            print(f"  model: {engine_config.model}")
+        if models:
+            for model in models:
+                print(f"  + {model}")
+        else:
+            print("  (no models)")
+        print()
+
+
+def _engines_for_listing(args: argparse.Namespace) -> List[EngineConfig]:
+    """Return the list of engines to inspect for --list-engines/--models.
+
+    Prefers ``--config`` engines; otherwise synthesises a single engine from
+    ``--engine``/``--base-url`` (matching how ``_run_selector`` and
+    ``_list_models`` construct the engine), falling back to a single unnamed
+    engine when only ``--base-url`` is supplied.
+    """
+    if args.config:
+        return BenchmarkConfig.from_dict(_load_config_file(args.config)).engines
+    if args.engine and args.base_url:
+        return [EngineConfig(args.engine, args.base_url, args.model or "")]
+    if args.base_url:
+        return [EngineConfig(name="models", base_url=args.base_url, model="")]
+    if args.engine:
+        return [EngineConfig(args.engine, args.base_url or "", args.model or "")]
+    # Defensive fallback: listing without any source is meaningless.
+    return [EngineConfig(name="engine", base_url="", model="")]
 
 
 async def _list_and_close(engine_obj: OpenAICompatEngine) -> List[str]:

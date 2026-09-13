@@ -23,7 +23,7 @@
     --font-mono: 'SF Mono', 'Fira Code', Consolas, monospace;
 }
 
-#refresh-models {
+.action-button {
     width: 150px;
     margin-bottom: 12px;
     padding: 8px 12px;
@@ -39,7 +39,7 @@
     margin: auto;
 }
 
-#refresh-models:hover:not(:disabled) {
+.action-button:hover:not(:disabled) {
     background: rgba(0, 122, 255, 0.1);
     border-color: var(--primary);
     color: var(--primary);
@@ -75,8 +75,8 @@ body {
     font-style: italic;
 }
 
-/* Results header (title + selected-model chips) shown above the table */
-.results-header {
+/* Component Header (Title + Tags) */
+.componentnt-header {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -84,7 +84,7 @@ body {
     margin-bottom: 16px;
 }
 
-.results-header-title {
+.header-title {
     font-size: 1.1em;
     font-weight: 700;
     letter-spacing: 1px;
@@ -92,13 +92,13 @@ body {
     color: var(--text-secondary);
 }
 
-.results-header-models {
+.tag-group
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
 }
 
-.results-header-chip {
+.tag-chip {
     display: inline-block;
     padding: 3px 9px;
     background: rgba(0, 122, 255, 0.12);
@@ -109,21 +109,21 @@ body {
     color: var(--primary);
 }
 
-/* Results table filter bar */
-.results-filter {
+/* Component Filter Bar */
+.filter-bar {
     display: flex;
     flex-direction: column;
     gap: 8px;
     margin-bottom: 12px;
 }
 
-.results-filter-search {
+.search-input-group {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.results-filter-search input {
+.search-input-group input {
     flex: 1;
     padding: 8px 12px;
     border-radius: 6px;
@@ -133,13 +133,13 @@ body {
     font-size: 13px;
 }
 
-.results-filter-search input:focus {
+.search-input-group input:focus {
     outline: none;
     border-color: var(--primary-hover);
     box-shadow: 0 0 0 2px var(--primary-glow);
 }
 
-.results-filter-categories {
+.tag-filter-group {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
@@ -165,8 +165,8 @@ body {
     align-self: flex-start;
 }
 
-/* Results table */
-.results-table {
+/* Data table component */
+.data-table {
     width: 100%;
     border-collapse: collapse;
     background: var(--bg-surface);
@@ -175,7 +175,7 @@ body {
     overflow: hidden;
 }
 
-.results-table th {
+.data-table th {
     padding: 10px 14px;
     text-align: left;
     font-size: 9px;
@@ -190,7 +190,7 @@ body {
     background: var(--bg-surface-high);
 }
 
-.results-table td {
+.data-table td {
     padding: 11px 14px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     vertical-align: top;

@@ -2,8 +2,13 @@
 // (engine, model, category, ttft_s, tok_per_s, iters_per_s, quality_*).
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const modelList = document.getElementById('engine-list');
-    const resultsContainer = document.getElementById('results-container');
+    // View-scoped containers. Each view panel (dashboard & benchmark) owns
+    // its own `#engine-list` and `#results-container`; getElementById returns
+    // only the first match (the hidden dashboard panel). These are rebound in
+    // switchView() to the active panel, so results are written into the
+    // visible panel, not the hidden one.
+    let modelList = document.getElementById('engine-list');
+    let resultsContainer = document.getElementById('results-container');
     const typeFilter = document.getElementById('benchmarkType') || null;
 
     // Track the set of selected models and the selected engine so the
@@ -39,10 +44,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Fetch and render the model checkboxes for each engine section.
+    // Idempotent: the target container is cleared first so the function is
+    // safe to call on every view switch (which rebinds ``modelList`` to the
+    // active panel). Returns early when there is no container to populate.
     async function loadModels() {
         try {
-            const modelList = document.getElementById('engine-list');
             if (!modelList) return;
+            modelList.innerHTML = '';
             modelList.classList.add('loading');
             for (const engine of window.__engines || []) {
                 const engineContent = document.createElement('div');
@@ -93,7 +101,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) {
             console.error('Error loading models:', e);
         } finally {
-            const modelList = document.getElementById('engine-list');
             if (modelList) modelList.classList.remove('loading');
         }
     }
@@ -261,6 +268,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const array = Array.isArray(modelNames)
             ? modelNames
             : (modelNames || '').split(',').filter((n) => n !== '');
+        const categories = Array.from(new Set(results.map((r) => r.category).filter((c) => c !== null && c !== undefined && c !== ''))).sort();
+        // Always render into the ACTIVE view's own ``#results-container``.
+        // The module-scoped ``resultsContainer`` points to whichever panel
+        // ``switchView`` last rebound to (often a hidden one), so every
+        // write must be scoped to the active panel to avoid rendering results
+        // into the wrong (hidden) container.
+        const activeView = document.querySelector('.view.active');
+        if (!activeView) return;
+        resultsContainer = activeView.querySelector('#results-container');
+        if (!resultsContainer) return;
         resultsContainer.innerHTML = '';
         // Only block re-renders AFTER the first table has been rendered. The
         // default container (from dashboard.html) contains a .run-button, so on
@@ -282,6 +299,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         __resultsRendered = true;
+        let header =
             '<span class="results-header-title">Benchmark Results</span>' +
             '<span class="results-header-models">';
         array.forEach((name, index) => {
@@ -294,7 +312,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         resultsContainer.innerHTML =
             '<div class="results-header">' + header + '</div>' +
             '<div class="results-filter">' +
-                '<div class="results-filter-search"><input id="results-search" type="search" placeholder="Search engine, model or category…" /></div>' +
+                '<div class="search-input-group">' +
+                    '<input type="search" id="results-search" placeholder="Filter results..." aria-label="Filter results">' +
+                '</div>' +
                 '<div class="results-filter-categories" id="results-categories">' +
                     categories.map((c) => '<span class="category-pill">' + escapeHtml(c) + '</span>').join('') +
                 '</div>' +
@@ -320,30 +340,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Results table filtering
     // ---------------------------------------------------------------------
     function attachResultsFilterListeners() {
-        const searchInput = document.getElementById('results-search');
-        const clearButton = document.getElementById('results-clear');
+        const activeView = document.querySelector('.view.active');
+        if (!activeView) return;
+        const resultsContainer = activeView.querySelector('#results-container');
+        if (!resultsContainer) return;
+        const searchInput = resultsContainer.querySelector('#results-search');
         if (searchInput) {
-            searchInput.value = '';
-            searchInput.addEventListener('input', (e) => {
-                const value = e.target.value.trim().toLowerCase();
-                const rows = document.querySelectorAll('.results-table tbody tr');
+            searchInput.addEventListener('input', () => {
+                const query = searchInput.value.trim().toLowerCase();
+                const rows = resultsContainer.querySelectorAll('.results-table tbody tr');
                 let visible = 0;
                 rows.forEach((row) => {
                     const text = row.textContent.toLowerCase();
-                    const match = value === '' || text.includes(value);
-                    row.style.display = match ? '' : 'none';
-                    if (match) visible++;
+                    const show = query === '' || text.indexOf(query) !== -1;
+                    row.style.display = show ? '' : 'none';
+                    if (show) visible++;
                 });
                 updateResultsCount(visible);
             });
         }
+        const clearButton = resultsContainer.querySelector('#results-clear');
         if (clearButton) {
             clearButton.addEventListener('click', () => {
-                document.getElementById('results-search').value = '';
-                document.querySelectorAll('.results-table tbody tr')
+                resultsContainer.querySelectorAll('.results-table tbody tr')
                     .forEach((row) => (row.style.display = ''));
-                document.getElementById('results-categories').innerHTML = '';
-                updateResultsCount(document.querySelectorAll('.results-table tbody tr').length);
+                resultsContainer.querySelector('#results-categories').innerHTML = '';
+                updateResultsCount(resultsContainer.querySelectorAll('.results-table tbody tr').length);
             });
         }
     }
@@ -515,7 +537,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Challenge corpus loaded once for filtering.
     window.__tasks = [];
 
-    function switchView(viewName) {
+    async function switchView(viewName) {
         const tabs = document.querySelectorAll('#header-nav .nav-tab');
         const panels = document.querySelectorAll('#content-area .view-panel');
         let current = 'dashboard';
@@ -535,6 +557,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!shouldShow) panel.style.display = 'none';
             else panel.style.display = '';
         }
+
+        // Rebind the module-level modelList/resultsContainer to the ACTIVE
+        // view's panel. getElementById() returns the FIRST #engine-list /
+        // #results-container, which belongs to the hidden Dashboard panel.
+        // Without this, Benchmark results silently populate the hidden
+        // container and the visible Benchmark panel stays empty.
+        const activePanel = document.querySelector('#content-area .view-panel[data-view="' + viewName + '"]');
+        if (activePanel) {
+            modelList = activePanel.querySelector('#engine-list');
+            resultsContainer = activePanel.querySelector('#results-container');
+        }
+
+        // Reload the active panel's model checkboxes into its own side menu.
+        // This runs on every view switch (including Benchmark, whose models
+        // were never loaded at init) so the correct visible panel is populated.
+        await loadModels();
+
         window.__activeView = current;
 
         return current;

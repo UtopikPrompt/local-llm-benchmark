@@ -363,8 +363,15 @@ def default_judge() -> JudgeConfig:
 
 
 def _is_absolute_http_url(url: str) -> bool:
-    """Return ``True`` if *url* is an absolute ``http`` or ``https`` URL."""
-    return url.strip().startswith(("http://", "https://"))
+    """Return ``True`` if *url* is an absolute ``http`` or ``https`` URL.
+
+    A trailing slash is rejected: appending a path to ``http://x:11434/``
+    produces a duplicate-slash URL (``http://x:11434//api/chat``).
+    """
+    stripped = url.strip()
+    if not stripped.startswith(("http://", "https://")):
+        return False
+    return not stripped.endswith("/")
 
 
 def _sniff_format(path: Path) -> str:

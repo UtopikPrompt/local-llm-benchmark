@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local LLM Benchmark</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/web/ui/style.css">
+</head>
+
+<body>
+    <!-- Header / top navigation bar -->
+    <header id="top-header">
+        <div class="header-left">
+            <div class="wordmark" id="wordmark">Local LLM Benchmark</div>
+        </div>
+
+        <nav class="header-nav" id="header-nav">
+            <button class="nav-tab active" data-view="dashboard" aria-current="page" type="button">Dashboard</button>
+            <button class="nav-tab" data-view="benchmark" type="button">Benchmark</button>
+            <button class="nav-tab" data-view="challenges" type="button">Challenges</button>
+        </nav>
+
+        <div class="header-right">
+            <a href="https://github.com/UtopikPrompt/local-llm-benchmark" class="" title="GitHub">
+                <span class="icon icon-github"></span>
+            </a>
+        </div>
+    </header>
+
+    <div id="app-shell">
+
+        <!-- Main content area -->
+        <main id="content-area">
+            <!-- Dashboard / overview panel -->
+            <section id="view-dashboard" class="view-panel" data-view="dashboard">
+                <!-- <div class="panel-toolbar">
+                    <span class="panel-subtitle">Benchmark results &amp; overview</span>
+                </div> -->
+                <div class="panel-body">
+
+                    <!-- Left sidebar: engine + model selection -->
+                    <aside id="side-menu">
+                        <div class="side-actions">
+                            <button class="refresh-models" id="refresh-models">
+                                <span class="icon icon-refresh"></span>
+                                <span class="label">Refresh Engines</span>
+                            </button>
+                        </div>
+                        <div id="engine-list"></div>
+                    </aside>
+
+                    <div class="results-scroll">
+                        <div id="results-container">
+                            <div class="results-table" id="results-table"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Benchmark configuration panel -->
+            <section id="view-benchmark" class="view-panel" data-view="benchmark">
+                <!-- <div class="panel-toolbar">
+                    <span class="panel-title">Benchmark</span>
+                    <span class="panel-subtitle">Configure engine, model &amp; run settings</span>
+                </div> -->
+                <div class="panel-body">
+                    <div class="bench-container">
+                        <div class="bench-form">
+                            <label class="bench-field">
+                                <span class="bench-field-label">Engine</span>
+                                <select id="engine-select" class="bench-select">
+                                    <option value="" disabled hidden></option>
+                                </select>
+                            </label>
+                            <label class="bench-field">
+                                <span class="bench-field-label">Model</span>
+                                <select id="model-select" class="bench-select">
+                                    <option value="" disabled hidden></option>
+                                </select>
+                            </label>
+                            <div class="bench-actions">
+                                <button id="btn-run-benchmark" class="btn-primary">Run Benchmark</button>
+                            </div>
+                        </div>
+                        <div id="bench-status" class="bench-status">
+                            <div id="bench-status-text" class="bench-status-text">Configure an engine and model, then run.
+                            </div>
+                            <div id="bench-progress" class="bench-progress">
+                                <div id="bench-progress-bar" class="bench-progress-bar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Challenges / tasks panel -->
+            <section id="view-challenges" class="view-panel hidden" data-view="challenges">
+                <!-- <div class="panel-toolbar">
+                    <span class="panel-title">Challenges</span>
+                    <span class="panel-subtitle">Tasks &amp; corpus</span>
+                </div> -->
+                <div class="panel-body">
+                    <div class="challenges-container">
+                        <div class="challenges-toolbar">
+                            <div id="challenge-categories" class="chip-row"></div>
+                            <div id="challenge-checks" class="challenge-checks"></div>
+                        </div>
+                        <div id="challenges-list" class="challenges-list"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/web/ui/main.js"></script>
+</body>
+
+</html>

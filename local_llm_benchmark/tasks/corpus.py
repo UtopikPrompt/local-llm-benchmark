@@ -69,11 +69,6 @@ class Task:
         if not self.prompt:
             raise ConfigError(f"task '{self.id}' has an empty prompt")
 
-    @property
-    def has_validator(self) -> bool:
-        """Return ``True`` if this task carries a deterministic validator."""
-        return self.validate is not None
-
     @classmethod
     def from_dict(cls, data: Dict[str, Any], source: str = "<dict>") -> "Task":
         """Build a :class:`Task` from a mapping loaded from disk."""

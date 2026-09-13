@@ -341,27 +341,6 @@ class Defaults:
         return f"Defaults({self.to_dict()})"
 
 
-def default_engine() -> EngineConfig:
-    """Return a new :class:`EngineConfig` populated with the default values."""
-    return EngineConfig(
-        name="default",
-        base_url=DEFAULT_ENGINE_BASE_URL,
-        model=DEFAULT_ENGINE_MODEL,
-        timeout=DEFAULT_TIMEOUT,
-        max_concurrent=DEFAULT_MAX_CONCURRENT,
-    )
-
-
-def default_judge() -> JudgeConfig:
-    """Return a new :class:`JudgeConfig` populated with the default values."""
-    return JudgeConfig(
-        name="default",
-        base_url=DEFAULT_JUDGE_BASE_URL,
-        model=DEFAULT_JUDGE_MODEL,
-        timeout=DEFAULT_TIMEOUT,
-    )
-
-
 def _is_absolute_http_url(url: str) -> bool:
     """Return ``True`` if *url* is an absolute ``http`` or ``https`` URL.
 
@@ -427,18 +406,6 @@ def load_config(path: str | os.PathLike[str]) -> BenchmarkConfig:
             if not engine.get("model"):
                 engine["model"] = Defaults().engine_model
     return BenchmarkConfig.from_dict(data)
-
-
-def write_config(config: BenchmarkConfig, path: str | os.PathLike[str]) -> None:
-    """Write a benchmark configuration to *path* (JSON when the path ends in ``.json``)."""
-    path = Path(path)
-    if path.suffix == ".json":
-        payload = json.dumps(config.to_dict(), indent=2)
-    else:
-        payload = yaml.safe_dump(config.to_dict(), sort_keys=False)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as handle:
-        handle.write(payload)
 
 
 # The project configuration file shipped at the repository root. Both the new

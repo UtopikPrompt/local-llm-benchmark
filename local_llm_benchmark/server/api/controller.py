@@ -1,8 +1,8 @@
 """HTTP controller layer.
 
-The controller is the thin HTTP bridge between the web routes
-(:mod:`local_llm_benchmark.server.app`) and the business logic in
-:mod:`local_llm_benchmark.server.api.services`. It owns the HTTP concern:
+The controller is the thin HTTP bridge between the web routes and the business
+logic in :mod:`local_llm_benchmark.server.api.services`. It owns the HTTP
+concern:
 request parsing, route-to-service dispatch and translating the
 domain-level errors raised by the service into HTTP responses. The service
 layer therefore stays agnostic of HTTP and never imports FastAPI.

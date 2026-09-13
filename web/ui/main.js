@@ -269,15 +269,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             ? modelNames
             : (modelNames || '').split(',').filter((n) => n !== '');
         const categories = Array.from(new Set(results.map((r) => r.category).filter((c) => c !== null && c !== undefined && c !== ''))).sort();
-        // Always render into the ACTIVE view's own ``#results-container``.
-        // The module-scoped ``resultsContainer`` points to whichever panel
-        // ``switchView`` last rebound to (often a hidden one), so every
-        // write must be scoped to the active panel to avoid rendering results
-        // into the wrong (hidden) container.
-        const activeView = document.querySelector('.view.active');
-        if (!activeView) return;
-        resultsContainer = activeView.querySelector('#results-container');
-        if (!resultsContainer) return;
         resultsContainer.innerHTML = '';
         // Only block re-renders AFTER the first table has been rendered. The
         // default container (from dashboard.html) contains a .run-button, so on
@@ -312,9 +303,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         resultsContainer.innerHTML =
             '<div class="results-header">' + header + '</div>' +
             '<div class="results-filter">' +
-                '<div class="search-input-group">' +
-                    '<input type="search" id="results-search" placeholder="Filter results..." aria-label="Filter results">' +
-                '</div>' +
+                '<div class="results-filter-search"><input id="results-search" type="search" placeholder="Search engine, model or category…" /></div>' +
                 '<div class="results-filter-categories" id="results-categories">' +
                     categories.map((c) => '<span class="category-pill">' + escapeHtml(c) + '</span>').join('') +
                 '</div>' +
@@ -340,32 +329,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Results table filtering
     // ---------------------------------------------------------------------
     function attachResultsFilterListeners() {
-        const activeView = document.querySelector('.view.active');
-        if (!activeView) return;
-        const resultsContainer = activeView.querySelector('#results-container');
-        if (!resultsContainer) return;
-        const searchInput = resultsContainer.querySelector('#results-search');
+        const searchInput = document.getElementById('results-search');
+        const clearButton = document.getElementById('results-clear');
         if (searchInput) {
-            searchInput.addEventListener('input', () => {
-                const query = searchInput.value.trim().toLowerCase();
-                const rows = resultsContainer.querySelectorAll('.results-table tbody tr');
+            searchInput.value = '';
+            searchInput.addEventListener('input', (e) => {
+                const value = e.target.value.trim().toLowerCase();
+                const rows = document.querySelectorAll('.results-table tbody tr');
                 let visible = 0;
                 rows.forEach((row) => {
                     const text = row.textContent.toLowerCase();
-                    const show = query === '' || text.indexOf(query) !== -1;
-                    row.style.display = show ? '' : 'none';
-                    if (show) visible++;
+                    const match = value === '' || text.includes(value);
+                    row.style.display = match ? '' : 'none';
+                    if (match) visible++;
                 });
                 updateResultsCount(visible);
             });
         }
-        const clearButton = resultsContainer.querySelector('#results-clear');
         if (clearButton) {
             clearButton.addEventListener('click', () => {
-                resultsContainer.querySelectorAll('.results-table tbody tr')
+                document.getElementById('results-search').value = '';
+                document.querySelectorAll('.results-table tbody tr')
                     .forEach((row) => (row.style.display = ''));
-                resultsContainer.querySelector('#results-categories').innerHTML = '';
-                updateResultsCount(resultsContainer.querySelectorAll('.results-table tbody tr').length);
+                document.getElementById('results-categories').innerHTML = '';
+                updateResultsCount(document.querySelectorAll('.results-table tbody tr').length);
             });
         }
     }

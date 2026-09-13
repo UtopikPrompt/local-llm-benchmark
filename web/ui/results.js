@@ -153,7 +153,7 @@ async function runBenchmark() {
   runButtonEl.setAttribute('disabled', 'true')
   runNote.textContent = 'Running benchmark…'
   try {
-    const response = await fetch('/run', { method: 'POST', body: JSON.stringify(buildRunRequest(state.activeModel)) })
+    const response = await fetch('/api/run', { method: 'POST', body: JSON.stringify(buildRunRequest(state.activeModel)) })
     if (response.ok) {
       const results = await response.json()
       displayResults(results, serializeSelectedModels(), 'quality')

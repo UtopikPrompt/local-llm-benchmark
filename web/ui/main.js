@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const engineModels = [];
                 (async () => {
                     try {
-                        const resp = await fetch('/models?base_url=' + encodeURIComponent(engine.base_url), { method: 'POST' });
+                        const resp = await fetch('/api/models?base_url=' + encodeURIComponent(engine.base_url), { method: 'POST' });
                         const data = await resp.json();
                         if (data.models) {
                             for (const model of data.models) engineModels.push(model);
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (note) note.textContent = 'Running benchmark…';
         const activeModel = window.__activeModel || window.__selectedModels[0];
         try {
-            const response = await fetch('/run', {
+            const response = await fetch('/api/run', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(buildRunRequest(activeModel)),

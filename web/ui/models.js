@@ -48,7 +48,7 @@ async function loadModels() {
       const engineModels = []
       (async () => {
         try {
-          const resp = await fetch('/models?base_url=' + encodeURIComponent(engine.base_url), {
+          const resp = await fetch('/api/models?base_url=' + encodeURIComponent(engine.base_url), {
             method: 'POST',
           })
           const data = await resp.json()

@@ -123,32 +123,32 @@ def create_app(config_path: str | None = None, app: FastAPI | None = None) -> Fa
     # dashboard's relative asset links resolve against the served root.
     app.mount("/web", StaticFiles(directory=_WEB_DIR))
 
-    @app.get("/defaults")
+    @app.get("/api/defaults")
     async def defaults() -> Any:
         """Return the centralized defaults used to seed the dashboard form."""
         return await _controller.defaults()
 
-    @app.post("/config")
+    @app.post("/api/config")
     async def config(base_url: str, model: str) -> Any:
         """Preview a candidate configuration and the models it serves."""
         return await _controller.config(base_url, model)
 
-    @app.post("/models")
+    @app.post("/api/models")
     async def models(base_url: str) -> Any:
         """List models available on the engine at *base_url*."""
         return await _controller.models(base_url)
 
-    @app.post("/run")
+    @app.post("/api/run")
     async def run(request: dict) -> Any:
         """Run the benchmark described by *request* and return the rows."""
         return await _controller.run(request)
 
-    @app.get("/results/{name}")
+    @app.get("/api/results/{name}")
     async def results(name: str) -> Any:
         """Stream a saved report named *name*."""
         return await _controller.results(name)
 
-    @app.get("/engines")
+    @app.get("/api/engines")
     async def engines() -> Any:
         """Return the engines configured in the dashboard's config file."""
         return await _controller.engines()

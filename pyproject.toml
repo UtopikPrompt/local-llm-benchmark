@@ -22,10 +22,29 @@ dev = [
 ui = [
     "uvicorn[standard]>=0.27",
 ]
+frontend = [
+    "esbuild>=0.19",
+]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+# ---------------------------------------------------------------------------
+# Frontend build
+# ---------------------------------------------------------------------------
+# The web UI is authored as ES modules in web/ui/*.js and bundled into a single
+# IIFE by esbuild. See build_frontend.py for the build script.
+[tool.local_llm_benchmark.frontend]
+# esbuild is invoked as a python package (python3 -m esbuild), not as a node
+# binary, so it is listed as a runtime dependency of the build script.
+build = "build_frontend:build_frontend"
+source = "web/ui/app.js"
+outfile = "web/ui/main.js"
+format = "iife"
+bundle = true
+# FastAPI serves the bundled bundle from this mount point.
+static_mount = "/web/ui"
 
 [tool.hatch.build.targets.wheel]
 packages = ["local_llm_benchmark"]

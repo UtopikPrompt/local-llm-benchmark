@@ -26,18 +26,24 @@ class Static:
     def resolve(self, request_path: str) -> Path | None:
         """Return the safe file for *request_path*, or ``None`` if forbidden."""
         try:
-            target = (self._root / request_path.lstrip("/ ")).resolve()
+            cleaned = request_path.strip()
+            cleaned = cleaned.lstrip("/")
+            cleaned = cleaned.rstrip("/")
+            target = (self._root / cleaned).resolve()
         except (OSError, ValueError):
             return None
-        # The target must be the root itself or live strictly inside it.
-        if target != self._root and self._root not in target.parents:
+        # Allow the root itself (e.g. "/") so the index can be served.
+        if target == self._root:
+            return self._root
+        # The target must live strictly inside the root.
+        if self._root not in target.parents:
             return None
         if not target.is_file():
             return None
         return target
 
-    async def __call__(self, request: Any, **_params: Any) -> Any:
-        target = self.resolve(request.url.path)
+    def __call__(self, request: Any, **_params: Any) -> Any:
+        target = self.resolve(request.path if request is not None else "")
         if target is None:
             raise NotFound()
         suffix = target.suffix

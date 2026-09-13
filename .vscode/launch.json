@@ -2,37 +2,36 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run Local LLM Benchmark UI",
+      "name": "Debug Dashboard in Editor",
       "type": "debugpy",
       "request": "launch",
       "module": "local_llm_benchmark",
       "justMyCode": false,
       "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "autoReload": {
+        "enable": true
+      }
     },
     {
       "name": "Debug Dashboard in Browser",
       "type": "chrome",
       "request": "launch",
       "url": "http://127.0.0.1:8000",
-      "browserType": "chrome",
-      "preLaunchTask": "start-server",
-      "skipChildren": true
+      "preLaunchTask": "start-server"
     },
     {
       "name": "Debug Dashboard in Edge",
       "type": "msedge",
       "request": "launch",
       "url": "http://127.0.0.1:8000",
-      "browserType": "edge",
-      "preLaunchTask": "start-server",
-      "skipChildren": true
+      "preLaunchTask": "start-server"
     }
   ],
   "compounds": [
     {
       "name": "UI + Server (Python + Browser)",
-      "configurations": ["Run Local LLM Benchmark UI", "Debug Dashboard in Browser"]
+      "configurations": ["Debug Dashboard in Editor", "Debug Dashboard in Browser"]
     }
   ]
 }

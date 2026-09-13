@@ -137,6 +137,18 @@ async def engines(config_path: Optional[str] = None) -> List[Dict[str, Any]]:
     return [engine.to_dict() for engine in data.engines]
 
 
+async def tasks() -> List[Dict[str, Any]]:
+    """Return the default task corpus as a list of serializable task dicts.
+
+    Each task carries its ``id``, ``category`` and ``prompt`` (plus optional
+    ``system`` and ``expected`` fields). The :class:`TaskCategory` enum values
+    are returned as their string form (``doc``, ``code``, ``qa``, ``math``).
+    """
+    from local_llm_benchmark.tasks.corpus import build_default_corpus
+
+    return [task.to_dict() for task in build_default_corpus()]
+
+
 def _resolve_config(config_path: Optional[str]) -> Path:
     """Resolve the full path to the configuration file."""
     if config_path:
@@ -146,7 +158,7 @@ def _resolve_config(config_path: Optional[str]) -> Path:
         # module's location (the package sits three levels below the repo root).
         root_path = Path(__file__).resolve().parent.parent.parent.parent / "config.yaml"
         path = root_path
-    
+
     if not path.exists():
         raise EngineNotFound(f"configuration file not found: {path}")
     return path

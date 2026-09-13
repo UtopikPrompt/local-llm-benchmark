@@ -38,15 +38,18 @@ class FakeStreamingResponse:
 
 
 def _fake_client(response_factory):
-    """Build a fake AsyncClient whose POST returns *response_factory*."""
+    """Build a fake AsyncClient backed by a custom transport.
 
-    async def post(url, json=None):
-        return response_factory(url, json)
+    In httpx >= 0.28 the ``post=`` / ``get=`` constructor arguments were
+    removed, so a custom transport is used instead. ``response_factory(url,
+    body)`` returns an ``httpx.Response``.
+    """
 
-    async def get(url):
-        return response_factory(url, None)
+    async def handler(request: httpx.Request) -> httpx.Response:
+        body = request.json() if request.content else None
+        return response_factory(request.url, body)
 
-    return httpx.AsyncClient(post=post, get=get)
+    return httpx.AsyncClient(transport=httpx.MockTransport(handler))
 
 
 def test_chat_streams_tokens(monkeypatch):

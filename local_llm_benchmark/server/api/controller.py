@@ -75,6 +75,7 @@ class Controller:
         return await self._services.results(models, benchmark_type)
 
 
+
 def _build_engine(name: str, base_url: str, model: str) -> Any:
     """Build a concrete engine used only to preview its advertised models."""
     from local_llm_benchmark.config import EngineConfig
@@ -153,19 +154,22 @@ def create_app(config_path: str | None = None, app: FastAPI | None = None) -> Fa
         return await _controller.engines()
 
     @app.get("/api/config/engines")
-    async def get_all_engines_endpoint() -> dict:
-        """Retrieves the list of all configured engines."""
-        controller_instance = Controller()
-        engines = await controller_instance.engines()
-        return {"engines": engines}
+    async def api_engines() -> Any:
+        """Return the list of configured engines."""
+        return {"engines": await _controller._services.engines()}
+
+    @app.get("/api/tasks")
+    async def api_tasks() -> Any:
+        """Return the default task corpus."""
+        return {"tasks": await _controller._services.tasks()}
 
     @app.get("/api/results")
-    async def get_results_endpoint(
+    async def api_results(
         models: str | None = None, benchmark_type: str | None = None
     ) -> Any:
-        """Retrieves benchmark results based on optional filters."""
-        controller_instance = Controller()
-        return await controller_instance.results(models=models, benchmark_type=benchmark_type)
+        """Return filtered benchmark results for the dashboard table."""
+        models_list = [m.strip() for m in models.split(",")] if models else None
+        return await _controller.results(models_list, benchmark_type)
 
     return app
 

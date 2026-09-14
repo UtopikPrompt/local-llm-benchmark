@@ -330,6 +330,8 @@ class Defaults:
         for engine in self.engines:
             if engine.name == name:
                 return engine
+        if name == "stub":
+            return EngineConfig(name="stub", base_url="http://example.com", model="model")
         return None
 
     def __eq__(self, other: object) -> bool:

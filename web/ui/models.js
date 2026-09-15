@@ -67,11 +67,11 @@ async function loadModels() {
 
       heading.addEventListener('click', () => engineContent.classList.toggle('expanded'))
 
-      const engineModels = []
+      const engineModels = state.engineModels || []
       (async () => {
         try {
           const resp = await fetch('/api/models?base_url=' + encodeURIComponent(engine.base_url), {
-            method: 'POST',
+            method: 'GET',
           })
           const data = await resp.json()
           if (data.models) {

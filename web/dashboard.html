@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Local LLM Benchmark</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIj48cmVjdCB3aWR0aD0iMzIiIGhlaWdodD0iMzIigcng9IjYiIGZpbGw9IiMwZjE3MmEiLz48cGF0aCBkPSJNNyAyMyBBMTAgMTAgMCAwIDEgMjUgMjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzM4YmRmYiIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48bGluZSB4MT0iMTYiIHkxPSIyMyIgeDI9IjIxIiB5Mj0iMTMiIHN0cm9rZT0iI2Y0M2Y1ZSIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxjaXJjbGUgY3g9IjE2IiBjeT0iMjMiIHI9IjIuNSIgZmlsbD0iI2Y0M2Y1ZSIvPjwvc3ZnPg==">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -70,16 +72,14 @@
                             <div class="model-group">
                                 <label class="model-checkbox-group">
                                     <input type="checkbox" id="all-models-checkbox">
-                                    <span class="model-label">All Models (<?= modelList.length ?>)</span>
+                                    <span class="model-label">All Models (
+                                        <?= modelList.length ?>)
+                                    </span>
                                 </label>
                             </div>
                             <!-- Existing engine groups will be rendered here -->
                             <div id="engine-list-content"></div>
                         </div>
-                        <select id="benchmarkType" class="benchmark-type-select" title="Benchmark mode">
-                            <option value="latency">Latency</option>
-                            <option value="quality">Quality</option>
-                        </select>
                     </aside>
 
                     <div class="results-scroll">
@@ -97,7 +97,8 @@
                                     <div id="challenge-status-display" class="challenge-status-display">
                                         <!-- Status indicator goes here -->
                                     </div>
-                                    <button class="btn-primary" id="run-challenge-batch-button" type="button" disabled>Run All Challenges</button>
+                                    <button class="btn-primary" id="run-challenge-batch-button" type="button"
+                                        disabled>Run All Challenges</button>
                                 </div>
                             </div>
 
@@ -105,7 +106,8 @@
                             <div id="challenges-list-container" class="challenges-list-container">
                                 <div class="challenge-list-header">
                                     <h3 class="challenge-title">Challenge / Task</h3>
-                                    <span class="challenge-meta">Status: <span id="challenge-status-text">Pending</span></span>
+                                    <span class="challenge-meta">Status: <span
+                                            id="challenge-status-text">Pending</span></span>
                                 </div>
                                 <!-- Individual challenge items will be rendered here -->
                                 <div id="challenge-items-list"></div>
@@ -130,14 +132,16 @@
                                 <div id="challenge-status-display" class="challenge-status-display">
                                     <!-- Status indicator goes here -->
                                 </div>
-                                <button class="btn-primary" id="run-challenge-batch-button" type="button" disabled>Run All Challenges</button>
+                                <button class="btn-primary" id="run-challenge-batch-button" type="button" disabled>Run
+                                    All Challenges</button>
                             </div>
                         </div>
                         <!-- 1. list of all challenges -->
                         <div id="challenges-list-container" class="challenges-list-container">
                             <div class="challenge-list-header">
                                 <h3 class="challenge-title">Challenge / Task</h3>
-                                <span class="challenge-meta">Status: <span id="challenge-status-text">Pending</span></span>
+                                <span class="challenge-meta">Status: <span
+                                        id="challenge-status-text">Pending</span></span>
                             </div>
                             <!-- Individual challenge items will be rendered here -->
                             <div id="challenge-items-list" class="challenge-items-list">

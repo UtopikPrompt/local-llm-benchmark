@@ -7,7 +7,6 @@ import state from './state.js'
 import dom from './dom.js'
 import { serializeSelectedModels, buildRunRequest } from './models.js'
 import { loadChallenges, toggleCategoryFilter, perCardStatus } from './challenges.js'
-import { ensureRunState } from './main.js'
 
 // Return the currently active view panel. ALL results-panel lookups must go
 // through this panel because ``dom.getEl`` falls back to

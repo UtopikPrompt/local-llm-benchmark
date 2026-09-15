@@ -571,6 +571,18 @@ body {
     cursor: pointer;
 }
 
+/* Global "Select all models" checkbox rendered above the engine/model list. */
+.model-checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.model-checkbox-group .model-label {
+    white-space: normal;
+}
+
 .model-label {
     flex: 1;
     white-space: nowrap;

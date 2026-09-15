@@ -15,7 +15,7 @@ The system must efficiently orchestrate benchmark runs while providing a granula
 
 ## ✨ 2. Decision
 
-The core execution flow will be managed by a centralized **Orchestrator Service** (in `runner.py`/`server/api/services.py`). This service determines the correct sequence and type of execution (full batch vs. per-challenge feedback) based on the user's explicit selections from the UI components defined below. The frontend must manage state synchronization between the UI components and the backend API endpoint (`/api/run`).
+The core execution flow will be managed by a centralized **Orchestrator Service** (in `local_llm_benchmark/runner.py`/`local_llm_benchmark/server/api/services.py`). This service determines the correct sequence and type of execution (full batch vs. per-challenge feedback) based on the user's explicit selections from the UI components defined below. The frontend must manage state synchronization between the UI components and the backend API endpoint (`/api/run`).
 
 ## 🌐 3. Frontend/UI Specification (New)
 

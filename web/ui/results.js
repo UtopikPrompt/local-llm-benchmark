@@ -7,6 +7,7 @@ import state from './state.js'
 import dom from './dom.js'
 import { serializeSelectedModels, buildRunRequest } from './models.js'
 import { loadChallenges, toggleCategoryFilter, perCardStatus } from './challenges.js'
+import { ensureRunState } from './main.js'
 
 // Return the currently active view panel. ALL results-panel lookups must go
 // through this panel because ``dom.getEl`` falls back to
@@ -135,22 +136,6 @@ function wirePerCardStatus(results, modelNames, benchmarkType) {
 let runStatePanel = null
 let runStateToolbar = null
 
-// Return the ``[runButton, runNote]`` pair from the active panel's static
-// results-container. Returns null if the active panel or its results container
-// can't be found (e.g. before init).
-function ensureRunState() {
-  const panel = document.querySelector('#content-area .view-panel[data-view="' + (state.activeView || 'benchmark') + '"]')
-  if (!panel) return null
-  const resultsContainer = dom.getEl(panel, '#results-container')
-  if (!resultsContainer) return null
-  if (runStatePanel && runStatePanel !== panel) {
-    runStatePanel.removeEventListener('click', onRunStateClick)
-    panel.addEventListener('click', onRunStateClick)
-    runStatePanel = panel
-  }
-  return [runStateToolbar.querySelector('#run-button'), runStateToolbar.querySelector('#run-note')]
-}
-
 function onRunStateClick(event) {
   const target = event.target
   if (target && target.id === 'run-button') {
@@ -234,20 +219,6 @@ function updateResultsCount(visible) {
   resultsCount.textContent = visible + ' shown'
 }
 
-// Load benchmark results for the currently selected models.
-async function loadBenchmarkResults(modelNames) {
-  const benchmarkType = document.getElementById('benchmarkType')
-  const type = benchmarkType ? benchmarkType.value : 'quality'
-  const resultsContainer = state.resultsContainer
-  const response = await fetch('/api/results?' + new URLSearchParams({ benchmark_type: type, model_names: modelNames || '' }).toString())
-  if (!response.ok) {
-    resultsContainer.innerHTML = ''
-    resultsContainer.appendChild(createRunState())
-    return
-  }
-  displayResults(await response.json(), modelNames, type)
-}
-
 // Run a benchmark for the currently active model.
 async function runBenchmark() {
   const resultsContainer = state.resultsContainer
@@ -292,6 +263,5 @@ export {
   displayResults,
   updateResultsCount,
   escapeHtml,
-  loadBenchmarkResults,
   runBenchmark,
 }

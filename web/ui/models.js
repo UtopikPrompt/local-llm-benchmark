@@ -42,6 +42,7 @@ async function loadModels() {
     await ensureEngines()
     container.innerHTML = ''
     container.classList.add('loading')
+    const selectAll = renderSelectAllCheckbox(container)
     for (const engine of state.engines || []) {
       const engineContent = document.createElement('div')
       engineContent.className = 'engine-content'
@@ -89,6 +90,7 @@ async function loadModels() {
 
       container.appendChild(engineContent)
     }
+    updateSelectAllCount()
     attachModelListeners()
   } catch (e) {
     console.error('Error loading models:', e)
@@ -139,6 +141,91 @@ function attachModelListeners() {
   checkboxes.forEach((checkbox) => {
     checkbox.addEventListener('change', () => setSelectedModels())
   })
+  const selectAll = document.querySelector('.global-select-all')
+  if (selectAll) {
+    selectAll.addEventListener('change', () => toggleSelectAllModels(selectAll))
+  }
+}
+
+// Render the global "Select all models" checkbox (plus its label) above the
+// engine/model list. The checkbox lives in ``#engine-list`` (dashboard.html),
+// but ``loadModels()`` clears that container's innerHTML on every view switch,
+// so it must be re-created here on every render. It uses a distinct class
+// (``global-select-all``) so it is never counted as an individual model.
+function renderSelectAllCheckbox(container) {
+  const checkbox = document.createElement('input')
+  checkbox.type = 'checkbox'
+  checkbox.className = 'global-select-all'
+  checkbox.id = 'all-models-checkbox'
+  checkbox.setAttribute('aria-label', 'Select all models')
+  const label = document.createElement('label')
+  label.className = 'model-checkbox-group'
+  label.appendChild(checkbox)
+  const count = document.createElement('span')
+  count.className = 'model-label'
+  label.appendChild(count)
+  container.appendChild(label)
+  return checkbox
+}
+
+// Keep the global checkbox's checked/indeterminate state in sync with the
+// individual model checkboxes. ``checkboxes`` must be the individual model
+// checkboxes only (i.e. excluding the ``.global-select-all`` global checkbox).
+function syncSelectAll(checkbox) {
+  const checkboxes = document.querySelectorAll('.model-checkbox')
+  const total = checkboxes.length
+  const selected = checkboxes.filter((cb) => cb.checked).length
+  checkbox.indeterminate = total > 0 && selected > 0 && selected < total
+  checkbox.checked = total > 0 && selected === total
+}
+
+// Select every currently-unselected model, mirroring setSelectedModels.
+function selectAllModels() {
+  const checkboxes = document.querySelectorAll('.model-checkbox')
+  const models = []
+  const engineModels = {}
+  for (const cb of checkboxes) {
+    cb.checked = true
+    models.push(cb.value)
+    const engine = cb.getAttribute('data-engine')
+    if (!engineModels[engine]) engineModels[engine] = []
+    engineModels[engine].push(cb.value)
+  }
+  window.__selectedModels = models
+  window.__engineModels = engineModels
+  const active = models.length ? models[0] : ''
+  window.__activeModel = active
+  state.activeModel = active
+  syncSelectAll(document.querySelector('.global-select-all'))
+}
+
+// Clear every model selection.
+function deselectAllModels() {
+  const checkboxes = document.querySelectorAll('.model-checkbox')
+  for (const cb of checkboxes) cb.checked = false
+  window.__selectedModels = []
+  window.__engineModels = {}
+  window.__activeModel = ''
+  state.activeModel = ''
+  syncSelectAll(document.querySelector('.global-select-all'))
+}
+
+// Toggle the global checkbox: check selects all unselected models, uncheck
+// clears the selection. Re-syncs the global state afterwards.
+function toggleSelectAllModels(checkbox) {
+  if (checkbox.checked) selectAllModels()
+  else deselectAllModels()
+  syncSelectAll(checkbox)
+}
+
+// Update the "All Models (N)" count label after the model list renders.
+function updateSelectAllCount() {
+  const total = document.querySelectorAll('.model-checkbox').length
+  const label = document.querySelector('.global-select-all')
+  if (label) {
+    const span = label.querySelector('.model-label')
+    if (span) span.textContent = total ? `All Models (${total})` : 'All Models'
+  }
 }
 
 // Write the current selection into the shared module globals.
@@ -157,6 +244,7 @@ function setSelectedModels() {
   const active = models.length ? models[0] : ''
   window.__activeModel = active
   state.activeModel = active
+  syncSelectAll(document.querySelector('.global-select-all'))
 }
 
 // Build a run request payload from the active model & selection.
@@ -210,8 +298,14 @@ export {
   renderModelCheckboxes,
   attachModelListeners,
   setSelectedModels,
+  toggleSelectAllModels,
+  selectAllModels,
+  deselectAllModels,
+  renderSelectAllCheckbox,
+  syncSelectAll,
   buildRunRequest,
   serializeSelectedModels,
   loadEngines,
   refreshAll,
+  updateSelectAllCount,
 }

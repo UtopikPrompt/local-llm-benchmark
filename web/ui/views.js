@@ -16,6 +16,12 @@ const VIEWS = ['dashboard', 'benchmark', 'challenges']
 
 // Switch to the given view: update active-tab styling, toggle panel visibility
 // and rebind the model/results containers to the active panel.
+//
+// NOTE: the model/results containers live ONLY in the benchmark panel, so they
+// must be rebound to the active panel on EVERY switch — including the very first
+// one performed by ``initializeViewSwitcher``. If this is skipped, ``state.engineListContainer``
+// / ``state.resultsContainer`` stay bound to the (wrong) initial panel and
+// ``loadModels``/``displayResults`` silently fail.
 function switchView(viewName) {
   state.activeView = viewName
   VIEWS.forEach((v) => {
@@ -31,24 +37,19 @@ function switchView(viewName) {
     if (panel) panel.style.display = v === viewName ? '' : 'none'
   })
 
-// ...existing code...
-  const panel = document.querySelector(`#content-area .view-panel[data-view="${viewName}"]`)
-  if (panel) {
-    // Bind containers safely, checking for existence before assignment.
-    state.engineListContainer = panel.querySelector('#engine-list')
-    if (!state.engineListContainer) {
-        console.warn("View setup warning: #engine-list container not found in the active view panel.");
+  // Bind the containers to every panel. The engine-list and results containers
+  // live in the "benchmark" panel, so this keeps state.engineListContainer /
+  // state.resultsContainer pointing at them regardless of which view is active
+  // (e.g. the dashboard, which has neither). Binding only the active panel
+  // skips loadModels() / displayResults() on initial load when the dashboard
+  // is the default view.
+  VIEWS.forEach((v) => {
+    const panel = dom.getEl(document, `#content-area .view-panel[data-view="${v}"]`)
+    if (panel) {
+      state.engineListContainer = panel.querySelector('#engine-list')
+      state.resultsContainer = panel.querySelector('#results-container')
     }
-    
-    state.resultsContainer = panel.querySelector('#results-container')
-    if (!state.resultsContainer) {
-        console.warn("View setup warning: #results-container not found in the active view panel.");
-    }
-  } else {
-    // Ensure state variables are null if the view panel itself is somehow missing.
-    state.engineListContainer = null
-    state.resultsContainer = null
-  }
+  })
 }
 
 // Re-run loadModels against the freshly rebound ``modelList``.

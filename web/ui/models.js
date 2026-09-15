@@ -12,15 +12,36 @@ function engineBaseURL(engineName) {
   return engine ? engine.base_url : engineName
 }
 
-// Fetch and render the model checkboxes for each engine section.
-// Idempotent: the target container is cleared first so the function is safe to
-// call on every view switch (which rebinds ``modelList`` to the active panel).
-// Returns early when there is no container to populate.
-async function loadModels() {
+// Ensure the engine list is populated from the config API before reading it.
+// Called by ``loadModels()`` so the function is self-sufficient regardless of
+// where ``loadEngines()`` was invoked (e.g. from initializeListeners(), where
+// it runs asynchronously and may not have completed before loadModels() reads
+// ``state.engines``). No-op if engines are already loaded.
+async function ensureEngines() {
+  if (state.engines && state.engines.length) return state.engines
   try {
-    if (!modelList) return
-    modelList.innerHTML = ''
-    modelList.classList.add('loading')
+    const engines = await loadEngines()
+    state.engines = engines || []
+  } catch (e) {
+    console.error('Failed to load engines:', e)
+  }
+  return state.engines || []
+}
+
+// Fetch and render the model checkboxes for each engine section.
+// Idempotent: The target container is cleared first so the function is safe to
+// call on every view switch. Must check if state.engineListContainer is available.
+async function loadModels() {
+  const container = state.engineListContainer
+  if (!container) {
+    console.warn("loadModels() skipped: Engine list container not found in the current active view.");
+    return
+  }
+  
+  try {
+    await ensureEngines()
+    container.innerHTML = ''
+    container.classList.add('loading')
     for (const engine of state.engines || []) {
       const engineContent = document.createElement('div')
       engineContent.className = 'engine-content'
@@ -66,13 +87,13 @@ async function loadModels() {
         }
       })()
 
-      modelList.appendChild(engineContent)
+      container.appendChild(engineContent)
     }
     attachModelListeners()
   } catch (e) {
     console.error('Error loading models:', e)
   } finally {
-    if (modelList) modelList.classList.remove('loading')
+    container.classList.remove('loading')
   }
 }
 
@@ -181,8 +202,6 @@ async function refreshAll() {
     if (button) button.disabled = false
   }
 }
-
-let modelList // rebound to the active engine-list panel inside switchView()
 
 export {
   engineBaseURL,

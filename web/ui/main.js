@@ -1,601 +1,787 @@
-// main.js — renders benchmark results using the Row data schema
-// (engine, model, category, ttft_s, tok_per_s, iters_per_s, quality_*).
+var __defProp = Object.defineProperty;
+var __markAsModule = (target) => __defProp(target, "__esModule", { value: true });
+var __require = typeof require !== "undefined" ? require : (x) => {
+  throw new Error('Dynamic require of "' + x + '" is not supported');
+};
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[Object.keys(fn)[0]])(fn = 0)), res;
+};
+var __export = (target, all) => {
+  __markAsModule(target);
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
 
-document.addEventListener('DOMContentLoaded', async () => {
-    // View-scoped containers. Each view panel (dashboard & benchmark) owns
-    // its own `#engine-list` and `#results-container`; getElementById returns
-    // only the first match (the hidden dashboard panel). These are rebound in
-    // switchView() to the active panel, so results are written into the
-    // visible panel, not the hidden one.
-    let modelList = document.getElementById('engine-list');
-    let resultsContainer = document.getElementById('results-container');
-    const typeFilter = document.getElementById('benchmarkType') || null;
-
-    // Track the set of selected models and the selected engine so the
-    // "Run benchmark" button triggers a run for the active model and the
-    // results table lists every selected model's rows.
-    window.__selectedModels = [];
-    window.__selectedEngine = '';
-    // Models selected per engine section.
-    window.__engineModels = {};
-    // The model whose rows are currently highlighted in the side menu.
-    window.__activeModel = '';
-
-    async function loadEngines() {
-        try {
-            const response = await fetch('/api/config/engines');
-            if (!response.ok) throw new Error('Failed to fetch engine list.');
-            const data = await response.json();
-            if (data.engines && Array.isArray(data.engines)) {
-                window.__engines = data.engines;
-            }
-        } catch (error) {
-            console.error('Error loading engines:', error);
-        }
-    }
-
-    // Resolve the base_url for the selected engine so we can query the
-    // remote engine's model list via the remote API.
-    function engineBaseURL(engineName) {
-        if (!engineName) return '';
-        const engines = window.__engines || [];
-        const engine = engines.find((e) => e.name === engineName);
-        return engine ? engine.base_url : engineName;
-    }
-
-    // Fetch and render the model checkboxes for each engine section.
-    // Idempotent: the target container is cleared first so the function is
-    // safe to call on every view switch (which rebinds ``modelList`` to the
-    // active panel). Returns early when there is no container to populate.
-    async function loadModels() {
-        try {
-            if (!modelList) return;
-            modelList.innerHTML = '';
-            modelList.classList.add('loading');
-            for (const engine of window.__engines || []) {
-                const engineContent = document.createElement('div');
-                engineContent.className = 'engine-content';
-                engineContent.dataset.engine = engine.name;
-                const engineTitle = document.createElement('div');
-                engineTitle.className = 'engine-title';
-                engineTitle.textContent = engine.name;
-                engineContent.appendChild(engineTitle);
-
-                const heading = document.createElement('button');
-                heading.className = 'engine-heading';
-
-                const name = document.createElement('span');
-                name.className = 'engine-heading-text';
-                name.textContent = engine.name;
-                heading.appendChild(name);
-
-                const toggle = document.createElement('span');
-                toggle.className = 'engine-chevron';
-                toggle.textContent = '▾';
-                heading.appendChild(toggle);
-
-                heading.addEventListener('click', () => engineContent.classList.toggle('expanded'));
-
-                const engineModels = [];
-                (async () => {
-                    try {
-                        const resp = await fetch('/api/models?base_url=' + encodeURIComponent(engine.base_url), { method: 'POST' });
-                        const data = await resp.json();
-                        if (data.models) {
-                            for (const model of data.models) engineModels.push(model);
-                            renderModelCheckboxes(engineContent, engine.name, engineModels);
-                        } else {
-                            const note = document.createElement('p');
-                            note.className = 'model-empty';
-                            note.textContent = 'No models available.';
-                            engineContent.appendChild(note);
-                        }
-                    } catch (e) {
-                        console.error('Failed to load models for', engine.name, e);
-                    }
-                })();
-
-                modelList.appendChild(engineContent);
-            }
-            attachModelListeners();
-        } catch (e) {
-            console.error('Error loading models:', e);
-        } finally {
-            if (modelList) modelList.classList.remove('loading');
-        }
-    }
-
-    function formatModelName(model) {
-        return model.charAt(0).toUpperCase() + model.slice(1).replace(/_/g, ' ');
-    }
-
-    function renderModelCheckboxes(engineContent, engineName, models) {
-        const list = document.createElement('div');
-        list.className = 'engine-items';
-        if (!models || models.length === 0) {
-            const note = document.createElement('p');
-            note.className = 'model-empty';
-            note.textContent = 'No models available.';
-            list.appendChild(note);
-        } else {
-            models.forEach(model => {
-                const label = document.createElement('label');
-                label.className = 'model-row';
-                const input = document.createElement('input');
-                input.type = 'checkbox';
-                input.className = 'model-checkbox';
-                input.value = model;
-                input.setAttribute('data-engine', engineName);
-                const text = document.createElement('span');
-                text.className = 'model-label';
-                text.textContent = formatModelName(model);
-                label.appendChild(input);
-                label.appendChild(text);
-                list.appendChild(label);
-            });
-        }
-        engineContent.appendChild(list);
-    }
-
-    // Refresh the side menu by reloading the engines from the config API
-    // and re-fetching every engine's model list from the remote engines.
-    async function refreshAll() {
-        const button = document.getElementById('refresh-models');
-        if (button) button.disabled = true;
-        try {
-            await loadEngines();
-            await loadModels();
-        } catch (error) {
-            console.error('Error refreshing engines:', error);
-        } finally {
-            if (button) button.disabled = false;
-        }
-    }
-
-    // Attach change listeners to the model checkboxes, then keep the
-    // in-memory selection in sync.
-    function attachModelListeners() {
-        const checkboxes = modelList.querySelectorAll('.model-checkbox');
-        checkboxes.forEach((checkbox) => {
-            checkbox.addEventListener('change', () => {
-                setSelectedModels();
-                const section = checkbox.closest('.engine-section');
-                if (section) {
-                    const anyChecked = Array.from(section.querySelectorAll('.model-checkbox')).some(
-                        (c) => c.checked
-                    );
-                    section.classList.toggle('has-selection', anyChecked);
-                }
-            });
-        });
-    }
-
-    // Read every checked model checkbox and update the shared selection
-    // state. ``__selectedModels`` holds all selected models (used to filter
-    // the results table), ``__selectedEngine`` marks the active section,
-    // ``__engineModels`` tracks the selection per engine, and ``__activeModel``
-    // is the single model used to trigger a run.
-    function setSelectedModels() {
-        const checkboxes = modelList.querySelectorAll('.model-checkbox');
-        const selected = [];
-        const perEngine = {};
-        checkboxes.forEach((checkbox) => {
-            if (checkbox.checked) {
-                selected.push(checkbox.value);
-                const engine = checkbox.getAttribute('data-engine');
-                (perEngine[engine] || (perEngine[engine] = [])).push(checkbox.value);
-            }
-        });
-        window.__selectedModels = selected;
-        window.__engineModels = perEngine;
-        if (selected.length === 1) {
-            window.__activeModel = selected[0];
-        }
-    }
-
-    // Trigger a benchmark run for the active model and refresh the
-    // results table once the saved report is available.
-    async function runBenchmark() {
-        const button = resultsContainer.querySelector('.run-button');
-        if (button) button.disabled = true;
-        const note = resultsContainer.querySelector('.run-note');
-        if (note) note.textContent = 'Running benchmark…';
-        const activeModel = window.__activeModel || window.__selectedModels[0];
-        try {
-            const response = await fetch('/api/run', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(buildRunRequest(activeModel)),
-            });
-            if (!response.ok) throw new Error('Failed to run benchmark.');
-            if (note) note.textContent = '';
-            await loadBenchmarkResults(serializeSelectedModels());
-        } catch (error) {
-            console.error('Error running benchmark:', error);
-            if (note) note.textContent = 'Error: ' + error.message;
-            await loadBenchmarkResults(serializeSelectedModels());
-        } finally {
-            if (button) button.disabled = false;
-        }
-    }
-
-    function buildRunRequest(model) {
-        const request = {};
-        const models = window.__selectedModels;
-        if (models && models.length) {
-            const engine = window.__engines.find((e) => e.models && e.models.includes(model)) ||
-                window.__engines.find((e) => e.model === model) ||
-                window.__engines[0];
-            if (engine) request.base_url = engine.base_url;
-        }
-        request.model = model;
-        return request;
-    }
-
-    function fmt(n) {
-        if (n === null || n === undefined || n === '' || Number.isNaN(n)) return '—';
-        return Number(n).toLocaleString(undefined, { maximumFractionDigits: 3 });
-    }
-
-    function cls(value, passClass, failClass, warnClass) {
-        if (value === null || value === undefined || value === '') return '';
-        const v = value;
-        if (typeof v === 'boolean') {
-            return v ? '<span class="pill ' + passClass + '">' + (v ? 'PASS' : 'FAIL') + '</span>'
-                : '<span class="pill ' + failClass + '">' + (v ? 'PASS' : 'FAIL') + '</span>';
-        }
-        return '';
-    }
-
-    function renderResult(r) {
-        const qualityPill = cls(r.quality_passed, 'pass', 'fail', 'warn');
-        const qualityJudgePill = cls(r.quality_judge, 'pass', 'fail', 'warn');
-        return '<tr>' +
-            '<td class="mono" style="color:var(--text-secondary);">' + fmt(r.engine) + '</td>' +
-            '<td class="mono" style="color:var(--text-secondary);">' + fmt(r.model) + '</td>' +
-            '<td><span class="category-pill">' + fmt(r.category) + '</span></td>' +
-            '<td class="num">' + fmt(r.ttft_s) + '</td>' +
-            '<td class="num">' + fmt(r.tok_per_s) + '</td>' +
-            '<td class="num">' + fmt(r.iters_per_s) + '</td>' +
-            '<td>' + qualityPill + '</td>' +
-            '<td>' + qualityJudgePill + '</td>' +
-        '</tr>';
-    }
-
-    function displayResults(results, modelNames, benchmarkType) {
-        // ``modelNames`` may arrive either as an array or a comma-separated
-        // string (serialized from the checkbox selection); normalize it.
-        const array = Array.isArray(modelNames)
-            ? modelNames
-            : (modelNames || '').split(',').filter((n) => n !== '');
-        const categories = Array.from(new Set(results.map((r) => r.category).filter((c) => c !== null && c !== undefined && c !== ''))).sort();
-        resultsContainer.innerHTML = '';
-        // Only block re-renders AFTER the first table has been rendered. The
-        // default container (from dashboard.html) contains a .run-button, so on
-        // the initial load this guard must NOT return early.
-        if (__resultsRendered && !resultsContainer.querySelector('.results-table')) return;
-
-        if (!results || results.length === 0) {
-            const label = array.length === 1
-                ? array[0]
-                : array.join(', ');
-            resultsContainer.innerHTML =
-                '<div class="run-state">' +
-                    '<div class="run-subtitle">No results yet for ' +
-                        escapeHtml(label) + '.</div>' +
-                    '<button class="run-button" id="run-button">Run benchmark</button>' +
-                    '<div class="run-note" id="run-note"></div>' +
-                '</div>';
-            resultsContainer.querySelector('#run-button').addEventListener('click', () => runBenchmark());
-            return;
-        }
-        __resultsRendered = true;
-        let header =
-            '<span class="results-header-title">Benchmark Results</span>' +
-            '<span class="results-header-models">';
-        array.forEach((name, index) => {
-            header += '<span class="results-header-chip">' + escapeHtml(name) + '</span>';
-            if (index < modelNames.length - 1) header += ', ';
-        });
-        header += '</span></div>';
-
-        const rows = results.map(renderResult).join('');
-        resultsContainer.innerHTML =
-            '<div class="results-header">' + header + '</div>' +
-            '<div class="results-filter">' +
-                '<div class="results-filter-search"><input id="results-search" type="search" placeholder="Search engine, model or category…" /></div>' +
-                '<div class="results-filter-categories" id="results-categories">' +
-                    categories.map((c) => '<span class="category-pill">' + escapeHtml(c) + '</span>').join('') +
-                '</div>' +
-                '<div class="results-filter-clear"><button id="results-clear" class="run-button">Clear</button></div>' +
-            '</div>' +
-            '<table class="results-table">' +
-                '<thead><tr>' +
-                    '<th class="mono">Engine</th>' +
-                    '<th class="mono">Model</th>' +
-                    '<th>Category</th>' +
-                    '<th class="num">TTFT (s)</th>' +
-                    '<th class="num">Tokens/s</th>' +
-                    '<th class="num">Iters/s</th>' +
-                    '<th style="text-align:right;">Quality</th>' +
-                    '<th style="text-align:right;">Judge</th>' +
-                '</tr></thead>' +
-                '<tbody>' + rows + '</tbody>' +
-            '</table>';
-        attachResultsFilterListeners();
-    }
-
-    // ---------------------------------------------------------------------
-    // Results table filtering
-    // ---------------------------------------------------------------------
-    function attachResultsFilterListeners() {
-        const searchInput = document.getElementById('results-search');
-        const clearButton = document.getElementById('results-clear');
-        if (searchInput) {
-            searchInput.value = '';
-            searchInput.addEventListener('input', (e) => {
-                const value = e.target.value.trim().toLowerCase();
-                const rows = document.querySelectorAll('.results-table tbody tr');
-                let visible = 0;
-                rows.forEach((row) => {
-                    const text = row.textContent.toLowerCase();
-                    const match = value === '' || text.includes(value);
-                    row.style.display = match ? '' : 'none';
-                    if (match) visible++;
-                });
-                updateResultsCount(visible);
-            });
-        }
-        if (clearButton) {
-            clearButton.addEventListener('click', () => {
-                document.getElementById('results-search').value = '';
-                document.querySelectorAll('.results-table tbody tr')
-                    .forEach((row) => (row.style.display = ''));
-                document.getElementById('results-categories').innerHTML = '';
-                updateResultsCount(document.querySelectorAll('.results-table tbody tr').length);
-            });
-        }
-    }
-
-    function updateResultsCount(visible) {
-        const note = document.querySelector('.results-count');
-        if (note) {
-            note.textContent = (visible === document.querySelectorAll('.results-table tbody tr').length)
-                ? ''
-                : (visible + ' of ' + document.querySelectorAll('.results-table tbody tr').length + ' shown');
-        }
-    }
-
-    function escapeHtml(value) {
-        if (value === null || value === undefined) return '';
-        return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    async function loadBenchmarkResults(modelNames) {
-        const names = modelNames || window.__selectedModels;
-        const typeGroup = document.getElementById('benchmarkType') || null;
-        const radio = typeGroup ? typeGroup.querySelector('input[name="benchmark_type"]:checked') : null;
-        const benchmarkType = radio ? radio.value : '';
-        const params = new URLSearchParams();
-        params.append('models', serializeSelectedModels(names));
-        if (benchmarkType) params.append('benchmark_type', benchmarkType);
-        const response = await fetch('/api/results?' + params.toString());
-        if (!response.ok) throw new Error('Failed to fetch results.');
-        const data = await response.json();
-        displayResults(data.results, serializeSelectedModels(names), benchmarkType);
-    }
-
-    function serializeSelectedModels() {
-        const names = window.__selectedModels;
-        if (!names || names.length === 0) return '';
-        return names.join(',');
-    }
-
-    // -------------------------------------------------------------------------
-    // Challenges / task corpus panel
-    // -------------------------------------------------------------------------
-
-    // Fetch the default task corpus and render it as category filter chips on
-    // top and task cards below, with an "active filter" pill on the card.
-    async function loadChallenges() {
-        const categoriesEl = document.getElementById('challenge-categories');
-        const listEl = document.getElementById('challenges-list');
-        categoriesEl.innerHTML = '';
-        listEl.innerHTML = '';
-        if (!categoriesEl || !listEl) return;
-        try {
-            const response = await fetch('/api/tasks');
-            if (!response.ok) throw new Error('Failed to fetch tasks.');
-            const data = await response.json();
-            const tasks = data.tasks || [];
-            window.__tasks = tasks;
-            if (tasks.length === 0) {
-                listEl.innerHTML = '<p class="empty">No tasks found.</p>';
-                return;
-            }
-            // Build category chips (one per distinct category, in first-seen order).
-            const order = [];
-            const counts = {};
-            for (const task of tasks) {
-                counts[task.category] = (counts[task.category] || 0) + 1;
-                if (!order.includes(task.category)) order.push(task.category);
-            }
-            for (const category of order) {
-                const chip = document.createElement('button');
-                chip.className = 'chip';
-                chip.setAttribute('type', 'button');
-                chip.setAttribute('data-category', category);
-                chip.innerHTML =
-                    '<span class="chip-label">' + escapeHtml(category) + '</span>' +
-                    '<span class="chip-count">' + counts[category] + '</span>';
-                chip.addEventListener('click', () => toggleCategoryFilter(category));
-                categoriesEl.appendChild(chip);
-            }
-            // Render every task as a card.
-            for (const task of tasks) {
-                listEl.appendChild(renderChallengeCard(task));
-            }
-        } catch (error) {
-            listEl.innerHTML =
-                '<p style="color:var(--text-secondary);">Error loading challenges: ' + error.message + '</p>';
-        }
-    }
-
-    // Track the active category filter chip (if any).
-    let __activeCategory = null;
-    let __resultsRendered = false;
-
-    function toggleCategoryFilter(category) {
-        if (__activeCategory === category) {
-            __activeCategory = null;
-        } else {
-            __activeCategory = category;
-        }
-        // Reflect the toggle on the chips.
-        const chips = document.querySelectorAll('#challenge-categories .chip');
-        for (const chip of chips) {
-            const chipCategory = chip.getAttribute('data-category');
-            if (chipCategory === __activeCategory) {
-                chip.classList.add('active');
-                chip.setAttribute('aria-pressed', 'true');
+// web/ui/dom.js
+var dom_exports = {};
+__export(dom_exports, {
+  default: () => dom_default
+});
+var dom, dom_default;
+var init_dom = __esm({
+  "web/ui/dom.js"() {
+    dom = {
+      getEl(root, id) {
+        return root ? root.querySelector(id) : document.getElementById(id);
+      },
+      setText(el, text) {
+        if (!el)
+          return;
+        el.textContent = text;
+      },
+      create(tag, props, children) {
+        const el = document.createElement(tag);
+        if (props) {
+          for (const [key, value] of Object.entries(props)) {
+            if (value === void 0)
+              continue;
+            if (key === "class") {
+              el.className = value;
+            } else if (key === "html") {
+              el.innerHTML = value;
+            } else if (key.startsWith("on") && typeof value === "function") {
+              el.addEventListener(key.slice(2).toLowerCase(), value);
+            } else if (key === "dataset" && typeof value === "object") {
+              for (const [k, v] of Object.entries(value))
+                el.dataset[k] = v;
+            } else if (key === "style" && typeof value === "object") {
+              for (const [k, v] of Object.entries(value))
+                el.style[k] = v;
+            } else if (key === "type" && typeof value === "string") {
+              el.setAttribute("type", value);
             } else {
-                chip.classList.remove('active');
-                chip.setAttribute('aria-pressed', 'false');
+              el.setAttribute(key, value);
             }
+          }
         }
-        applyChallengeFilter();
-    }
-
-    // Re-render the challenge cards applying the active category filter.
-    function applyChallengeFilter() {
-        if (!__activeCategory) {
-            // No active filter: show every task.
-            const listEl = document.getElementById('challenges-list');
-            const tasks = window.__tasks || [];
-            listEl.innerHTML = '';
-            if (tasks.length === 0) {
-                listEl.innerHTML = '<p class="empty">No tasks found.</p>';
-                return;
-            }
-            for (const task of tasks) listEl.appendChild(renderChallengeCard(task));
-            __resultsRendered = true;
-            return;
+        if (children) {
+          if (typeof children === "string")
+            el.textContent = children;
+          else
+            for (const c of children)
+              el.append(c);
         }
-        const listEl = document.getElementById('challenges-list');
-        const tasks = (window.__tasks || []).filter((t) => t.category === __activeCategory);
-        listEl.innerHTML = '';
-        if (tasks.length === 0) {
-            listEl.innerHTML =
-                '<p class="empty">No tasks found in category "' + escapeHtml(__activeCategory) + '".</p>';
-            return;
-        }
-        for (const task of tasks) listEl.appendChild(renderChallengeCard(task));
-    }
-
-    function renderChallengeCard(task) {
-        const card = document.createElement('div');
-        card.className = 'challenge-card';
-        card.setAttribute('data-category', task.category || '');
-        const tags = [];
-        if (task.system) tags.push('<span class="tag">system</span>');
-        if (task.expected) tags.push('<span class="tag">expected</span>');
-        const tagsHtml = tags.join('') || '<span class="tag">prompt</span>';
-        card.innerHTML =
-            '<div class="challenge-card-header">' +
-                '<span class="challenge-card-title">' + escapeHtml(task.id) + '</span>' +
-                '<span class="chip small">' + escapeHtml(task.category) + '</span>' +
-            '</div>' +
-            '<div class="challenge-card-body">' +
-                '<p class="challenge-card-prompt">' + escapeHtml(task.prompt) + '</p>' +
-            '</div>' +
-            '<div class="challenge-card-tags">' + tagsHtml + '</div>';
-        return card;
-    }
-
-    // -------------------------------------------------------------------------
-    // View switching between the three nav tabs
-    // -------------------------------------------------------------------------
-
-    // Challenge corpus loaded once for filtering.
-    window.__tasks = [];
-
-    async function switchView(viewName) {
-        const tabs = document.querySelectorAll('#header-nav .nav-tab');
-        const panels = document.querySelectorAll('#content-area .view-panel');
-        let current = 'dashboard';
-        for (const tab of tabs) {
-            if (tab.getAttribute('data-view') === viewName) {
-                tab.classList.add('active');
-                tab.setAttribute('aria-current', 'page');
-            } else {
-                tab.classList.remove('active');
-                tab.removeAttribute('aria-current');
-            }
-            current = viewName;
-        }
-        for (const panel of panels) {
-            const shouldShow = panel.getAttribute('data-view') === viewName;
-            panel.classList.toggle('hidden', !shouldShow);
-            if (!shouldShow) panel.style.display = 'none';
-            else panel.style.display = '';
-        }
-
-        // Rebind the module-level modelList/resultsContainer to the ACTIVE
-        // view's panel. getElementById() returns the FIRST #engine-list /
-        // #results-container, which belongs to the hidden Dashboard panel.
-        // Without this, Benchmark results silently populate the hidden
-        // container and the visible Benchmark panel stays empty.
-        const activePanel = document.querySelector('#content-area .view-panel[data-view="' + viewName + '"]');
-        if (activePanel) {
-            modelList = activePanel.querySelector('#engine-list');
-            resultsContainer = activePanel.querySelector('#results-container');
-        }
-
-        // Reload the active panel's model checkboxes into its own side menu.
-        // This runs on every view switch (including Benchmark, whose models
-        // were never loaded at init) so the correct visible panel is populated.
-        await loadModels();
-
-        window.__activeView = current;
-
-        return current;
-    }
-
-    async function initializeListeners() {
-        const benchmarkType = document.getElementById('benchmarkType') || null;
-        const challengesList = document.getElementById('challenges-list');
-        const categoriesEl = document.getElementById('challenge-categories');
-        // Delegated toggle: the module-level toggleCategoryFilter handles the
-        // filter state, chip visuals, and applyChallengeFilter() call.
-        if (benchmarkType) benchmarkType.addEventListener('change', () => {
-            window.__selectedModels = [];
-            window.__selectedEngine = '';
-            window.__engineModels = {};
-            loadModels();
-        });
-        if (categoriesEl) {
-            const chips = categoriesEl.querySelectorAll('.chip');
-            for (const chip of chips) {
-                chip.addEventListener('click', () => toggleCategoryFilter(chip.getAttribute('data-category')));
-            }
-        }
-        for (const tab of document.querySelectorAll('#header-nav .nav-tab')) {
-            tab.addEventListener('click', () => switchView(tab.getAttribute('data-view')));
-        }
-        await loadEngines();
-        await loadModels();
-        await loadChallenges();
-        switchView(window.__activeView || 'dashboard');
-    }
-    initializeListeners();
-
-    // Render the saved results table on page load so the dashboard shows
-    // results immediately (with the filter UI), no manual run required.
-    await loadBenchmarkResults();
+        return el;
+      },
+      addClass(el, className) {
+        if (el)
+          el.classList.add(className);
+      },
+      removeClass(el, className) {
+        if (el)
+          el.classList.remove(className);
+      },
+      toggleClass(el, className, force) {
+        if (el)
+          el.classList.toggle(className, force);
+      },
+      isVisible(el) {
+        return !!el && el.offsetParent !== null && el.offsetParent !== void 0;
+      }
+    };
+    dom_default = dom;
+  }
 });
 
+// web/ui/state.js
+var state_exports = {};
+__export(state_exports, {
+  default: () => state_default
+});
+var state, state_default;
+var init_state = __esm({
+  "web/ui/state.js"() {
+    state = {
+      selectedModels: [],
+      selectedEngine: "",
+      engineModels: {},
+      activeModel: "",
+      engines: [],
+      engineListContainer: null,
+      resultsContainer: null,
+      tasks: [],
+      activeView: "",
+      resultsRendered: false,
+      activeCategory: null
+    };
+    state_default = state;
+  }
+});
+
+// web/ui/models.js
+var models_exports = {};
+__export(models_exports, {
+  attachModelListeners: () => attachModelListeners,
+  buildRunRequest: () => buildRunRequest,
+  engineBaseURL: () => engineBaseURL,
+  formatModelName: () => formatModelName,
+  loadEngines: () => loadEngines,
+  loadModels: () => loadModels,
+  refreshAll: () => refreshAll,
+  renderModelCheckboxes: () => renderModelCheckboxes,
+  serializeSelectedModels: () => serializeSelectedModels,
+  setSelectedModels: () => setSelectedModels
+});
+function engineBaseURL(engineName) {
+  const engines = state_default.engines || [];
+  const engine = engines.find((e) => e.name === engineName);
+  return engine ? engine.base_url : engineName;
+}
+async function ensureEngines() {
+  if (state_default.engines && state_default.engines.length)
+    return state_default.engines;
+  try {
+    const engines = await loadEngines();
+    state_default.engines = engines || [];
+  } catch (e) {
+    console.error("Failed to load engines:", e);
+  }
+  return state_default.engines || [];
+}
+async function loadModels() {
+  const container = state_default.engineListContainer;
+  if (!container) {
+    console.warn("loadModels() skipped: Engine list container not found in the current active view.");
+    return;
+  }
+  try {
+    await ensureEngines();
+    container.innerHTML = "";
+    container.classList.add("loading");
+    for (const engine of state_default.engines || []) {
+      const engineContent = document.createElement("div");
+      engineContent.className = "engine-content";
+      engineContent.dataset.engine = engine.name;
+      const engineTitle = document.createElement("div");
+      engineTitle.className = "engine-title";
+      engineTitle.textContent = engine.name;
+      engineContent.appendChild(engineTitle);
+      const heading = document.createElement("button");
+      heading.className = "engine-heading";
+      const name = document.createElement("span");
+      name.className = "engine-heading-text";
+      name.textContent = engine.name;
+      heading.appendChild(name);
+      const toggle = document.createElement("span");
+      toggle.className = "engine-chevron";
+      toggle.textContent = "\u25BE";
+      heading.appendChild(toggle);
+      heading.addEventListener("click", () => engineContent.classList.toggle("expanded"));
+      const engineModels = [](async () => {
+        try {
+          const resp = await fetch("/api/models?base_url=" + encodeURIComponent(engine.base_url), {
+            method: "POST"
+          });
+          const data = await resp.json();
+          if (data.models) {
+            for (const model of data.models)
+              engineModels.push(model);
+            renderModelCheckboxes(engineContent, engine.name, engineModels);
+          } else {
+            const note = document.createElement("p");
+            note.className = "model-empty";
+            note.textContent = "No models available.";
+            engineContent.appendChild(note);
+          }
+        } catch (e) {
+          console.error("Failed to load models for", engine.name, e);
+        }
+      })();
+      container.appendChild(engineContent);
+    }
+    attachModelListeners();
+  } catch (e) {
+    console.error("Error loading models:", e);
+  } finally {
+    container.classList.remove("loading");
+  }
+}
+function formatModelName(model) {
+  return model.charAt(0).toUpperCase() + model.slice(1).replace(/_/g, " ");
+}
+function renderModelCheckboxes(engineContent, engineName, models) {
+  const list = document.createElement("div");
+  list.className = "engine-items";
+  if (!models || models.length === 0) {
+    const note = document.createElement("p");
+    note.className = "model-empty";
+    note.textContent = "No models available.";
+    list.appendChild(note);
+  } else {
+    models.forEach((model) => {
+      const label = document.createElement("label");
+      label.className = "model-row";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "model-checkbox";
+      input.value = model;
+      input.setAttribute("data-engine", engineName);
+      const text = document.createElement("span");
+      text.className = "model-label";
+      text.textContent = formatModelName(model);
+      label.appendChild(input);
+      label.appendChild(text);
+      list.appendChild(label);
+    });
+  }
+  engineContent.appendChild(list);
+}
+function attachModelListeners() {
+  const checkboxes = document.querySelectorAll(".model-checkbox");
+  checkboxes.forEach((checkbox) => {
+    checkbox.addEventListener("change", () => setSelectedModels());
+  });
+}
+function setSelectedModels() {
+  const models = [];
+  const engineModels = {};
+  for (const checkbox of document.querySelectorAll(".model-checkbox")) {
+    const model = checkbox.value;
+    const engine = checkbox.getAttribute("data-engine");
+    if (!engineModels[engine])
+      engineModels[engine] = [];
+    engineModels[engine].push(model);
+    models.push(model);
+  }
+  window.__selectedModels = models;
+  window.__engineModels = engineModels;
+  const active = models.length ? models[0] : "";
+  window.__activeModel = active;
+  state_default.activeModel = active;
+}
+function buildRunRequest(model) {
+  const request = { model };
+  if (window.__selectedModels && window.__selectedModels.length > 0) {
+    request.model_names = window.__selectedModels;
+  }
+  return request;
+}
+function serializeSelectedModels() {
+  const names = window.__selectedModels || [];
+  return names.length ? names.join(",") : "";
+}
+async function loadEngines() {
+  if (!("fetch" in window))
+    return state_default.engines || [];
+  try {
+    const res = await fetch("/api/config/engines");
+    const data = await res.json();
+    state_default.engines = data.engines || [];
+  } catch (e) {
+    state_default.engines = state_default.engines || [];
+  }
+  return state_default.engines || [];
+}
+async function refreshAll() {
+  const button = document.getElementById("refresh-models");
+  if (button)
+    button.disabled = true;
+  try {
+    await loadEngines();
+    await loadModels();
+  } catch (error) {
+    console.error("Error refreshing engines:", error);
+  } finally {
+    if (button)
+      button.disabled = false;
+  }
+}
+var init_models = __esm({
+  "web/ui/models.js"() {
+    init_dom();
+    init_state();
+  }
+});
+
+// web/ui/results.js
+var results_exports = {};
+__export(results_exports, {
+  cls: () => cls,
+  displayResults: () => displayResults,
+  escapeHtml: () => escapeHtml,
+  fmt: () => fmt,
+  loadBenchmarkResults: () => loadBenchmarkResults,
+  renderResult: () => renderResult,
+  runBenchmark: () => runBenchmark,
+  updateResultsCount: () => updateResultsCount
+});
+function fmt(n) {
+  if (n === null || n === void 0 || n === "")
+    return "\u2014";
+  if (Number.isNaN(Number(n)))
+    return n;
+  return Number(n).toLocaleString(void 0, { maximumFractionDigits: 3 });
+}
+function cls(value, passClass, failClass, warnClass) {
+  if (value === true)
+    return '<span class="pill ' + passClass + '">' + value + "</span>";
+  if (value === false)
+    return '<span class="pill ' + failClass + '">' + value + "</span>";
+  if (value === null || value === void 0 || value === "")
+    return "";
+  return '<span class="pill warn">' + value + "</span>";
+}
+function renderResult(r) {
+  return '<tr><td class="mono" style="color:var(--text-secondary);">' + escapeHtml(r.engine) + '</td><td class="mono" style="color:var(--text-secondary);">' + escapeHtml(r.model) + '</td><td class="pill">' + escapeHtml(r.category) + '</td><td class="mono">' + fmt(r.ttft_s) + '</td><td class="mono">' + fmt(r.tok_per_s) + '</td><td class="mono">' + fmt(r.iters_per_s) + '</td><td class="pill">' + cls(r.quality, "pass", "fail", "warn") + '</td><td class="pill">' + cls(r.qualityJudge, "pass", "fail", "warn") + "</td></tr>";
+}
+function displayResults(results, modelNames, benchmarkType) {
+  if (state_default.selectedModels.length === 0) {
+    const resultsContainer2 = state_default.resultsContainer;
+    resultsContainer2.innerHTML = "";
+    resultsContainer2.appendChild(createRunState());
+    return;
+  }
+  if (!state_default.resultsRendered) {
+    return;
+  }
+  const resultsContainer = state_default.resultsContainer;
+  resultsContainer.innerHTML = "";
+  const modelList = dom_default.getEl(resultsContainer, "#engine-list");
+  resultsContainer.classList.add("rendered");
+  modelList.classList.remove("expanded");
+  if (modelNames && modelNames.length === 0) {
+    resultsContainer.innerHTML = "";
+    resultsContainer.appendChild(createRunState());
+    return;
+  }
+  resultsContainer.classList.remove("empty");
+  resultsContainer.classList.add("results-rendered");
+  const resultsTable = buildResultsTable(results, modelNames, benchmarkType);
+  resultsContainer.appendChild(resultsTable);
+  wirePerCardStatus(results, modelNames, benchmarkType);
+}
+function wirePerCardStatus(results, modelNames, benchmarkType) {
+  if (!results || modelNames === void 0)
+    return;
+  const cards = document.querySelectorAll(".challenge-card[data-id]");
+  for (const card of cards) {
+    const taskId = card.getAttribute("data-id");
+    const name = modelNames && modelNames[taskId];
+    if (!name)
+      continue;
+    let anyRow = null;
+    for (const r of results) {
+      if (r.taskId === taskId) {
+        anyRow = r;
+        break;
+      }
+    }
+    if (!anyRow)
+      continue;
+    let status;
+    if (anyRow.quality_passed === true)
+      status = "pass";
+    else if (anyRow.quality_passed === false)
+      status = "fail";
+    else if (anyRow.quality_passed === null || anyRow.quality_passed === void 0 || anyRow.quality_passed === "") {
+      if (anyRow.error)
+        status = "error";
+      else if (anyRow.qualityJudge)
+        status = "judge";
+      else
+        status = "not-run";
+    } else if (anyRow.error) {
+      status = "error";
+    } else if (anyRow.qualityJudge) {
+      status = "judge";
+    } else {
+      status = "not-run";
+    }
+    try {
+      perCardStatus(taskId, status);
+    } catch (e) {
+      console.error("perCardStatus failed for task " + taskId, e);
+    }
+  }
+}
+function ensureRunState() {
+  const panel = document.querySelector('#content-area .view-panel[data-view="' + (state_default.activeView || "benchmark") + '"]');
+  if (!panel)
+    return null;
+  const resultsContainer = dom_default.getEl(panel, "#results-container");
+  if (!resultsContainer)
+    return null;
+  if (runStatePanel && runStatePanel !== panel) {
+    runStatePanel.removeEventListener("click", onRunStateClick);
+    panel.addEventListener("click", onRunStateClick);
+    runStatePanel = panel;
+  }
+  return [runStateToolbar.querySelector("#run-button"), runStateToolbar.querySelector("#run-note")];
+}
+function onRunStateClick(event) {
+  const target = event.target;
+  if (target && target.id === "run-button") {
+    runBenchmark();
+  }
+}
+function createRunState() {
+  const found = ensureRunState();
+  if (!found)
+    return null;
+  const [runButton, runNote] = found;
+  const resultsContainer = state_default.resultsContainer;
+  if (resultsContainer)
+    resultsContainer.classList.add("run-state");
+  const benchmarkType = document.getElementById("benchmarkType");
+  runButton.setAttribute("data-benchmark-type", benchmarkType ? benchmarkType.value : "quality");
+  if (state_default.selectedModels.length === 0) {
+    runNote.textContent = "Select a model to run the benchmark.";
+    runButton.classList.add("btn-primary");
+    runButton.setAttribute("disabled", "true");
+  } else {
+    runNote.textContent = "Select at least one model to run a benchmark.";
+    runButton.removeAttribute("disabled");
+  }
+  return runButton;
+}
+function buildResultsTable(results, modelNames, benchmarkType) {
+  const resultsContainer = state_default.resultsContainer;
+  const resultsHeader = dom_default.getEl(resultsContainer, "#results-header");
+  resultsHeader.textContent = benchmarkType === "latency" ? "Latency results" : "Quality results";
+  ensureResultsFilter();
+  const resultsTable = dom_default.create("table", { className: "results-table" }, []);
+  resultsContainer.appendChild(resultsTable);
+  return resultsTable;
+}
+function ensureResultsFilter() {
+  const resultsContainer = state_default.resultsContainer;
+  const search = dom_default.getEl(resultsContainer, "#results-search");
+  if (!search)
+    return;
+  const searchEl = search.querySelector("input");
+  if (!searchEl) {
+    const input = dom_default.create("input", { className: "search", placeholder: "Filter results", type: "text", onInput: filterResults });
+    search.appendChild(input);
+  } else if (!searchEl.getAttribute("oninput")) {
+    searchEl.addEventListener("input", filterResults);
+  }
+  const clear = dom_default.getEl(resultsContainer, "#results-clear");
+  if (clear && !clear.getAttribute("onclick")) {
+    clear.addEventListener("click", clearResults);
+  }
+}
+function filterResults() {
+  const resultsContainer = state_default.resultsContainer;
+  const search = dom_default.getEl(resultsContainer, "#results-search");
+  const resultsTable = dom_default.getEl(resultsContainer, ".results-table");
+  const filter = search.value.toLowerCase();
+  const rows = resultsTable.querySelectorAll("tbody tr");
+  for (const row of rows) {
+    row.style.display = row.textContent.toLowerCase().includes(filter) ? "" : "none";
+  }
+}
+function clearResults() {
+  const resultsContainer = state_default.resultsContainer;
+  const search = dom_default.getEl(resultsContainer, "#results-search");
+  if (search)
+    search.value = "";
+  const resultsTable = dom_default.getEl(resultsContainer, ".results-table");
+  if (resultsTable)
+    resultsTable.querySelectorAll("tbody tr").forEach((row) => {
+      row.style.display = "";
+    });
+  const categories = dom_default.getEl(resultsContainer, "#results-categories");
+  if (categories)
+    categories.querySelector(".clear").click();
+}
+function updateResultsCount(visible) {
+  const resultsCount = dom_default.getEl(state_default.resultsContainer, "#results-count");
+  resultsCount.textContent = visible + " shown";
+}
+async function loadBenchmarkResults(modelNames) {
+  const benchmarkType = document.getElementById("benchmarkType");
+  const type = benchmarkType ? benchmarkType.value : "quality";
+  const resultsContainer = state_default.resultsContainer;
+  const response = await fetch("/api/results?" + new URLSearchParams({ benchmark_type: type, model_names: modelNames || "" }).toString());
+  if (!response.ok) {
+    resultsContainer.innerHTML = "";
+    resultsContainer.appendChild(createRunState());
+    return;
+  }
+  displayResults(await response.json(), modelNames, type);
+}
+async function runBenchmark() {
+  const resultsContainer = state_default.resultsContainer;
+  const runButton = resultsContainer.querySelector(".run-button");
+  const runNote = resultsContainer.querySelector(".run-note");
+  const runButtonEl = runButton || resultsContainer.querySelector("#run-button");
+  runButtonEl.setAttribute("disabled", "true");
+  runNote.textContent = "Running benchmark\u2026";
+  try {
+    const response = await fetch("/api/run", { method: "POST", body: JSON.stringify(buildRunRequest(state_default.activeModel)) });
+    if (response.ok) {
+      const results = await response.json();
+      displayResults(results, serializeSelectedModels(), "quality");
+    } else {
+      const error = await response.json().catch(() => ({}));
+      runNote.textContent = "Error: " + (error.detail || error.message || response.statusText);
+    }
+  } catch (e) {
+    runNote.textContent = "Error: " + e.message;
+  } finally {
+    const runButtonEl2 = runButton || resultsContainer.querySelector("#run-button");
+    runButtonEl2.removeAttribute("disabled");
+  }
+}
+function escapeHtml(value) {
+  if (value === null || value === void 0)
+    return "";
+  return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+}
+var runStatePanel, runStateToolbar;
+var init_results = __esm({
+  "web/ui/results.js"() {
+    init_state();
+    init_dom();
+    init_models();
+    init_challenges();
+    runStatePanel = null;
+    runStateToolbar = null;
+  }
+});
+
+// web/ui/challenges.js
+var challenges_exports = {};
+__export(challenges_exports, {
+  applyChallengeFilter: () => applyChallengeFilter,
+  loadChallenges: () => loadChallenges,
+  perCardStatus: () => perCardStatus,
+  renderChallengeCard: () => renderChallengeCard,
+  toggleCategoryFilter: () => toggleCategoryFilter
+});
+function renderChallengeCard(task) {
+  const card = document.createElement("div");
+  card.className = "challenge-card";
+  card.setAttribute("data-category", task.category || "");
+  card.setAttribute("data-id", task.id);
+  const tags = [];
+  if (task.system)
+    tags.push('<span class="tag">system</span>');
+  if (task.expected)
+    tags.push('<span class="tag">expected</span>');
+  const tagsHtml = tags.join("") || '<span class="tag">prompt</span>';
+  card.innerHTML = '<div class="challenge-card-header"><span class="challenge-card-title">' + escapeHtml(task.id) + '</span><span class="chip small">' + escapeHtml(task.category) + '</span></div><div class="challenge-card-body"><p class="challenge-card-prompt">' + escapeHtml(task.prompt) + '</p></div><div class="challenge-card-tags">' + tagsHtml + '</div><div class="challenge-checkboxes"><button class="challenge-checkbox select-all" type="button" aria-pressed="false"><input type="checkbox" class="challenge-checkbox" aria-hidden="true" />select all</button></div><span class="check-count">0/0</span><div class="bench-status"><span class="bench-status-text">Not run</span><div class="bench-progress-bar"><div class="bench-status-bar"></div></div></div>';
+  wireChallengeCard(card);
+  return card;
+}
+function wireChallengeCard(card) {
+  const selectAll = card.querySelector(".challenge-checkbox select-all .challenge-checkbox");
+  const perCard = card.querySelectorAll(".challenge-checkboxes .challenge-checkbox");
+  if (selectAll) {
+    selectAll.addEventListener("change", () => {
+      const checked = selectAll.checked;
+      for (const cb of perCard)
+        cb.checked = checked;
+      syncSelectAll(selectAll, perCard);
+      updateCheckCount(card, perCard);
+    });
+  }
+  for (const cb of perCard) {
+    cb.addEventListener("change", () => {
+      const selectAll2 = card.querySelector(".challenge-checkbox select-all .challenge-checkbox");
+      const remaining = card.querySelectorAll(".challenge-checkboxes .challenge-checkbox:not(:checked)").length;
+      if (remaining === 0) {
+        selectAll2.checked = true;
+        selectAll2.setAttribute("aria-pressed", "true");
+      } else if (perCard.length === remaining) {
+        selectAll2.checked = false;
+        selectAll2.setAttribute("aria-pressed", "false");
+      }
+      syncSelectAll(selectAll2, perCard);
+      updateCheckCount(card, perCard);
+    });
+  }
+}
+function syncSelectAll(selectAll, perCard) {
+  if (!selectAll || perCard.length === 0)
+    return;
+  const all = perCard.every((cb) => cb.checked);
+  const some = perCard.some((cb) => cb.checked);
+  if (all) {
+    selectAll.checked = true;
+    selectAll.setAttribute("aria-pressed", "true");
+  } else {
+    selectAll.checked = false;
+    selectAll.setAttribute("aria-pressed", "false");
+  }
+}
+function updateCheckCount(card, perCard) {
+  const countEl = card.querySelector(".check-count");
+  if (countEl)
+    countEl.textContent = `${perCard.filter((cb) => cb.checked).length}/${perCard.length}`;
+}
+function perCardStatus(taskId, status) {
+  const bar = document.querySelector(`.challenge-card[data-id="${taskId}"] .bench-status-bar`);
+  const text = document.querySelector(`.challenge-card[data-id="${taskId}"] .bench-status-text`);
+  if (!bar || !text)
+    return;
+  const labels = { pass: "Pass", fail: "Fail", error: "Error", "not-run": "Not run" };
+  const pct = { "not-run": 0, pass: 100, fail: 0, error: 0 };
+  text.textContent = labels[status] || "Not run";
+  bar.style.width = `${pct[status] || 0}%`;
+  bar.classList.remove("complete", "partial");
+  if (status === "pass")
+    bar.classList.add("complete");
+  else if (status === "fail" || status === "error")
+    bar.classList.add("partial");
+}
+function applyChallengeFilter() {
+  if (!activeCategory) {
+    const listEl2 = dom_default.getEl(document, "#challenges-list");
+    const tasks2 = state_default.tasks || [];
+    listEl2.innerHTML = "";
+    if (tasks2.length === 0) {
+      listEl2.innerHTML = '<p class="empty">No tasks found.</p>';
+      return;
+    }
+    for (const task of tasks2)
+      listEl2.appendChild(renderChallengeCard(task));
+    state_default.resultsRendered = true;
+    return;
+  }
+  const listEl = dom_default.getEl(document, "#challenges-list");
+  const tasks = (state_default.tasks || []).filter((t) => t.category === activeCategory);
+  listEl.innerHTML = "";
+  if (tasks.length === 0) {
+    listEl.innerHTML = '<p class="empty">No tasks found in category "' + escapeHtml(activeCategory) + '".</p>';
+    return;
+  }
+  for (const task of tasks)
+    listEl.appendChild(renderChallengeCard(task));
+}
+function toggleCategoryFilter(category) {
+  activeCategory = activeCategory === category ? null : category;
+  const chips = document.querySelectorAll("#challenge-categories .chip");
+  for (const chip of chips) {
+    const chipCategory = chip.getAttribute("data-category");
+    if (chipCategory === activeCategory) {
+      chip.classList.add("active");
+      chip.setAttribute("aria-pressed", "true");
+    } else {
+      chip.classList.remove("active");
+      chip.setAttribute("aria-pressed", "false");
+    }
+  }
+  applyChallengeFilter();
+}
+async function loadChallenges() {
+  const response = await fetch("/api/tasks");
+  if (!response.ok)
+    return;
+  const data = await response.json();
+  state_default.tasks = Array.isArray(data) ? data : data.tasks || [];
+  const categories = [...new Set((state_default.tasks || []).map((t) => t.category).filter(Boolean))];
+  const categoriesEl = dom_default.getEl(document, "#challenge-categories");
+  if (!categoriesEl)
+    return;
+  categoriesEl.innerHTML = "";
+  for (const category of categories) {
+    const chip = document.createElement("button");
+    chip.className = "chip";
+    chip.setAttribute("data-category", category);
+    chip.setAttribute("aria-pressed", "false");
+    chip.textContent = category;
+    chip.addEventListener("click", () => toggleCategoryFilter(category));
+    categoriesEl.appendChild(chip);
+  }
+  applyChallengeFilter();
+}
+var activeCategory;
+var init_challenges = __esm({
+  "web/ui/challenges.js"() {
+    init_dom();
+    init_state();
+    init_results();
+    activeCategory = null;
+  }
+});
+
+// web/ui/views.js
+var views_exports = {};
+__export(views_exports, {
+  VIEWS: () => VIEWS,
+  initializeViewSwitcher: () => initializeViewSwitcher,
+  reloadModels: () => reloadModels,
+  switchView: () => switchView
+});
+function switchView(viewName) {
+  state_default.activeView = viewName;
+  VIEWS.forEach((v) => {
+    const tab = dom_default.getEl(document, `#header-nav [data-view="${v}"]`);
+    if (tab) {
+      if (v === viewName) {
+        tab.classList.add("active");
+      } else {
+        tab.classList.remove("active");
+      }
+    }
+    const panel2 = dom_default.getEl(document, `#content-area .view-panel[data-view="${v}"]`);
+    if (panel2)
+      panel2.style.display = v === viewName ? "" : "none";
+  });
+  const panel = document.querySelector(`#content-area .view-panel[data-view="${viewName}"]`);
+  if (panel) {
+    state_default.engineListContainer = panel.querySelector("#engine-list");
+    if (!state_default.engineListContainer) {
+      console.warn("View setup warning: #engine-list container not found in the active view panel.");
+    }
+    state_default.resultsContainer = panel.querySelector("#results-container");
+    if (!state_default.resultsContainer) {
+      console.warn("View setup warning: #results-container not found in the active view panel.");
+    }
+  } else {
+    state_default.engineListContainer = null;
+    state_default.resultsContainer = null;
+  }
+}
+function reloadModels() {
+  if (state_default.engineListContainer) {
+    loadModels();
+  } else {
+    console.warn("Cannot reload models: Engine list container is null.");
+  }
+}
+function initializeViewSwitcher() {
+  if (document.body.dataset.viewSwitcherInitialized === "true") {
+    console.warn("View switcher initialization already completed. Skipping setup.");
+    return;
+  }
+  const navTabs = document.querySelectorAll("#header-nav .nav-tab");
+  for (const tab of navTabs) {
+    tab.addEventListener("click", () => switchView(tab.getAttribute("data-view")));
+  }
+  document.body.dataset.viewSwitcherInitialized = "true";
+  switchView(state_default.activeView || "dashboard");
+}
+var VIEWS;
+var init_views = __esm({
+  "web/ui/views.js"() {
+    init_dom();
+    init_state();
+    init_models();
+    init_challenges();
+    VIEWS = ["dashboard", "benchmark", "challenges"];
+  }
+});
+
+// web/ui/main.js
+(function() {
+  const dom2 = (init_dom(), dom_exports);
+  const state2 = (init_state(), state_exports);
+  const models = (init_models(), models_exports);
+  const challenges = (init_challenges(), challenges_exports);
+  const results = (init_results(), results_exports);
+  const views = (init_views(), views_exports);
+  state2.selectedModels = window.__selectedModels || [];
+  state2.selectedEngine = window.__selectedEngine || "";
+  state2.engineModels = window.__engineModels || {};
+  state2.activeModel = window.__activeModel || "";
+  state2.engines = window.__engines || [];
+  state2.tasks = window.__tasks || [];
+  window.__tasks = [];
+  views.initializeViewSwitcher();
+  models.loadModels();
+  challenges.loadChallenges();
+  results.loadBenchmarkResults();
+  views.switchView(state2.activeView || "dashboard");
+})();

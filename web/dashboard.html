@@ -40,11 +40,15 @@
             <!-- Dashboard / overview panel -->
             <section id="view-dashboard" class="view-panel" data-view="dashboard">
                 <div class="panel-body">
-
-                    <div class="results-scroll">
-                        <div id="results-container">
-                            <div class="results-table" id="results-table"></div>
+                    <div class="top-container">
+                        <!-- 1. Search box for filters -->
+                        <div class="filter-bar">
+                            <div class="search-input-group">
+                                <input class="search" id="results-search" placeholder="Filter results" type="text" />
+                            </div>
                         </div>
+                        <!-- 2. Table showing all results -->
+                        <div class="results-table" id="results-table"></div>
                     </div>
                 </div>
             </section>
@@ -61,33 +65,92 @@
                                 <span class="label">Refresh Engines</span>
                             </button>
                         </div>
-                        <div id="engine-list"></div>
+                        <div id="engine-list">
+                            <!-- All Models Checkbox -->
+                            <div class="model-group">
+                                <label class="model-checkbox-group">
+                                    <input type="checkbox" id="all-models-checkbox">
+                                    <span class="model-label">All Models (<?= modelList.length ?>)</span>
+                                </label>
+                            </div>
+                            <!-- Existing engine groups will be rendered here -->
+                            <div id="engine-list-content"></div>
+                        </div>
+                        <select id="benchmarkType" class="benchmark-type-select" title="Benchmark mode">
+                            <option value="latency">Latency</option>
+                            <option value="quality">Quality</option>
+                        </select>
                     </aside>
 
                     <div class="results-scroll">
                         <div id="results-container">
-                            <div class="results-table" id="results-table"></div>
+                            <!-- Challenges Toolbar (New Section) -->
+                            <div class="panel-toolbar challenges-toolbar">
+                                <div class="panel-title">Run Challenges</div>
+                                <div class="panel-subtitle">Select challenges and run batch tests.</div>
+                                <div class="challenge-controls">
+                                    <!-- All Challenges Checkbox -->
+                                    <label class="checkbox-group all-challenges-select">
+                                        <input type="checkbox" id="all-challenges-checkbox">
+                                        <span class="model-label">All Challenges</span>
+                                    </label>
+                                    <div id="challenge-status-display" class="challenge-status-display">
+                                        <!-- Status indicator goes here -->
+                                    </div>
+                                    <button class="btn-primary" id="run-challenge-batch-button" type="button" disabled>Run All Challenges</button>
+                                </div>
+                            </div>
+
+                            <!-- Challenges List (New Area) -->
+                            <div id="challenges-list-container" class="challenges-list-container">
+                                <div class="challenge-list-header">
+                                    <h3 class="challenge-title">Challenge / Task</h3>
+                                    <span class="challenge-meta">Status: <span id="challenge-status-text">Pending</span></span>
+                                </div>
+                                <!-- Individual challenge items will be rendered here -->
+                                <div id="challenge-items-list"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
 
             <!-- Challenges / tasks panel -->
-            <section id="view-challenges" class="view-panel hidden" data-view="challenges">
+            <section id="view-challenges" class="view-panel" data-view="challenges">
                 <div class="panel-body">
                     <div class="challenges-container">
-                        <div class="challenges-toolbar">
-                            <div id="challenge-categories" class="chip-row"></div>
-                            <div id="challenge-checks" class="challenge-checks"></div>
+                        <div class="panel-toolbar challenges-toolbar">
+                            <div class="panel-title">All Challenges</div>
+                            <div class="panel-subtitle">Review and manage all available benchmark tasks.</div>
+                            <div class="challenge-controls">
+                                <label class="checkbox-group all-challenges-select">
+                                    <input type="checkbox" id="all-challenges-checkbox">
+                                    <span class="model-label">Select All Challenges</span>
+                                </label>
+                                <div id="challenge-status-display" class="challenge-status-display">
+                                    <!-- Status indicator goes here -->
+                                </div>
+                                <button class="btn-primary" id="run-challenge-batch-button" type="button" disabled>Run All Challenges</button>
+                            </div>
                         </div>
-                        <div id="challenges-list" class="challenges-list"></div>
+                        <!-- 1. list of all challenges -->
+                        <div id="challenges-list-container" class="challenges-list-container">
+                            <div class="challenge-list-header">
+                                <h3 class="challenge-title">Challenge / Task</h3>
+                                <span class="challenge-meta">Status: <span id="challenge-status-text">Pending</span></span>
+                            </div>
+                            <!-- Individual challenge items will be rendered here -->
+                            <div id="challenge-items-list" class="challenge-items-list">
+                                <!-- Challenge items go here -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
         </main>
     </div>
 
-    <script src="/web/ui/main.js"></script>
+    <script type="module" src="/web/ui/main.js"></script>
 </body>
 
 </html>

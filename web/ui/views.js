@@ -19,7 +19,7 @@ const VIEWS = ['dashboard', 'benchmark', 'challenges']
 function switchView(viewName) {
   state.activeView = viewName
   VIEWS.forEach((v) => {
-    const tab = dom.getEl(document, `[data-view="${v}"]`)
+    const tab = dom.getEl(document, `#header-nav [data-view="${v}"]`)
     if (tab) {
       if (v === viewName) {
         tab.classList.add('active')
@@ -27,52 +27,66 @@ function switchView(viewName) {
         tab.classList.remove('active')
       }
     }
-    const panel = dom.getEl(document, `[data-view="${v}"]`)
+    const panel = dom.getEl(document, `#content-area .view-panel[data-view="${v}"]`)
     if (panel) panel.style.display = v === viewName ? '' : 'none'
   })
 
+// ...existing code...
   const panel = document.querySelector(`#content-area .view-panel[data-view="${viewName}"]`)
   if (panel) {
-    modelList = panel.querySelector('#engine-list')
-    resultsContainer = panel.querySelector('#results-container')
+    // Bind containers safely, checking for existence before assignment.
+    state.engineListContainer = panel.querySelector('#engine-list')
+    if (!state.engineListContainer) {
+        console.warn("View setup warning: #engine-list container not found in the active view panel.");
+    }
+    
+    state.resultsContainer = panel.querySelector('#results-container')
+    if (!state.resultsContainer) {
+        console.warn("View setup warning: #results-container not found in the active view panel.");
+    }
+  } else {
+    // Ensure state variables are null if the view panel itself is somehow missing.
+    state.engineListContainer = null
+    state.resultsContainer = null
   }
 }
 
 // Re-run loadModels against the freshly rebound ``modelList``.
 function reloadModels() {
-  if (modelList) loadModels()
-}
-
-// Attach tab-click listeners (click -> switchView).
-function initializeListeners() {
-  switchView(state.activeView || 'dashboard')
-  const benchmarkType = dom.getEl(document, '#benchmarkType') || null
-  const categoriesEl = dom.getEl(document, '#challenge-categories')
-  // Delegated toggle: the module-level toggleCategoryFilter handles the
-  // filter state, chip visuals, and applyChallengeFilter() call.
-  if (benchmarkType) benchmarkType.addEventListener('change', () => {
-    window.__selectedModels = []
-    window.__selectedEngine = ''
-    window.__engineModels = {}
+  // Only attempt to reload if the container is actually present.
+  if (state.engineListContainer) {
     loadModels()
-  })
-  if (categoriesEl) {
-    const chips = categoriesEl.querySelectorAll('.chip')
-    for (const chip of chips) {
-      chip.addEventListener('click', () => toggleCategoryFilter(chip.getAttribute('data-category')))
-    }
+  } else {
+    console.warn("Cannot reload models: Engine list container is null.")
   }
-  for (const tab of document.querySelectorAll('#header-nav .nav-tab')) {
-    tab.addEventListener('click', () => switchView(tab.getAttribute('data-view')))
+}
+// ...existing code...
+
+/**
+ * Manages the visibility and state of the main views (dashboard, benchmark, challenges).
+ * Attaches view change listeners once and ensures the view state is correct.
+ */
+function initializeViewSwitcher() {
+  // Use a global check on the document body's data attribute to ensure setup runs only once.
+  if (document.body.dataset.viewSwitcherInitialized === 'true') {
+    console.warn("View switcher initialization already completed. Skipping setup.");
+    return;
   }
-  loadEngines()
-  loadModels()
-  loadChallenges()
-  switchView(window.__activeView || 'dashboard')
+
+  // 1. Attach Listeners to all navigation tabs
+  const navTabs = document.querySelectorAll("#header-nav .nav-tab");
+  for (const tab of navTabs) {
+    tab.addEventListener("click", () => switchView(tab.getAttribute("data-view")));
+  }
+  
+  // 2. Set the flag indicating setup is complete
+  document.body.dataset.viewSwitcherInitialized = 'true';
+  
+  // 3. Run initial view state
+  switchView(state.activeView || "dashboard");
 }
 
-// Rebound container targets to the active panel (see ``switchView``).
-let modelList
-let resultsContainer
+// The container targets are rebound to the active panel inside ``switchView``
+// and shared via the ``state`` object (see ``models.js`` / ``results.js``).
 
-export { VIEWS, switchView, reloadModels, initializeListeners }
+export { VIEWS, switchView, reloadModels, initializeViewSwitcher }

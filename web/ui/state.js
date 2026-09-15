@@ -17,6 +17,12 @@ const state = {
   activeModel: '',
   // Engine definitions fetched from ``/api/config/engines``.
   engines: [],
+  // The active panel's engine-list container, rebound inside ``switchView``.
+  // Read/written by ``loadModels`` (``models.js``).
+  engineListContainer: null,
+  // The active panel's results container, rebound inside ``switchView``.
+  // Read/written by ``displayResults`` (``results.js``).
+  resultsContainer: null,
   // Tasks fetched from ``/api/tasks``.
   tasks: [],
   // Active view: 'dashboard' | 'benchmark' | 'challenges'.

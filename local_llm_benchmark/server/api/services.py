@@ -98,10 +98,31 @@ async def run(request: Dict[str, Any], *, config_path: Optional[str] = None) -> 
         engine = defaults.select_engine(selected)
         if engine is None:
             raise EngineNotFound(f"engine '{selected}' not configured")
+        engines = [engine]
     else:
         if not request.get("base_url") or not request.get("model"):
             raise BadRequest("'base_url' and 'model' are required")
-        engine = _new_engine_from_request(request, defaults)
+        model_names = list(request.get("model_names") or [])
+        if not model_names:
+            model_names = [request.get("model")]
+        # ``model_names`` carries one entry per selected model. With a single
+        # model we keep the historical single-engine path; for multiple models
+        # we build one engine per model, sharing the request ``base_url``. The
+        # runner already emits one ``Row`` per (engine, task) pair, so
+        # multi-engine requires no runner changes.
+        if len(model_names) > 1:
+            engines = []
+            for index, model in enumerate(model_names):
+                engine = EngineConfig(
+                    name=f"ollama-{index}",
+                    base_url=request.get("base_url"),
+                    model=model,
+                    timeout=defaults.timeout,
+                    max_concurrent=defaults.max_concurrent,
+                )
+                engines.append(engine)
+        else:
+            engines = [_new_engine_from_request(request, defaults)]
 
     judges: List[JudgeConfig] = []
     judge = _new_judge_from_request(request, defaults)
@@ -109,7 +130,7 @@ async def run(request: Dict[str, Any], *, config_path: Optional[str] = None) -> 
         judges.append(judge)
 
     config = BenchmarkConfig(
-        engines=[engine],
+        engines=engines,
         judges=judges,
         tasks=request.get("task_dir", defaults.tasks),
         task=request.get("task"),

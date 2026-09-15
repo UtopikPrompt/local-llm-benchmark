@@ -39,7 +39,7 @@ build-backend = "hatchling.build"
 # esbuild is invoked as a python package (python3 -m esbuild), not as a node
 # binary, so it is listed as a runtime dependency of the build script.
 build = "build_frontend:build_frontend"
-source = "web/ui/app.js"
+source = "web/ui/main.js"
 outfile = "web/ui/main.js"
 format = "iife"
 bundle = true

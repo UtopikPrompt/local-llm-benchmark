@@ -1,19 +1,19 @@
 # Architectural Decision Record (ADR) - Global Data Schema and State Contract
 
 **Title:** Global Data Schema and State Contract
-**Status:** Accepted
+**Status:** [`.pill` Status: Accepted]
 **Date:** 2026-09-14
 **Authors:** AI Assistant
 
 ---
 
-## 🎯 1. Context
+## 📋 Problem Statement / Motivation
 
 *The system must maintain data consistency across its various components: the database/storage, the API payloads, and the client-side state.*
 
 Multiple sources of data exist: the user's configuration (selected models/engines), the inputs (tasks/challenges), and the outputs (results). A rigid, canonical schema must be enforced to prevent discrepancies, especially when coordinating results between the backend and the frontend dashboard.
 
-## ✨ 2. Decision
+## ✨ Decision
 
 All core data types will adhere to a single, canonical schema definition. This schema will be defined and ideally validated against a TypeScript/JSON Schema file, serving as the single source of truth.
 
@@ -23,6 +23,12 @@ All core data types will adhere to a single, canonical schema definition. This s
 3.  **Client State Object:** The structure used by `web/ui/state.js`, ensuring all UI components operate on the same expected data shape.
 
 The persistence (SQLite) and configuration (`config.yaml` deprecation) mandates are enforced in [ADR 0001](0001-project-purpose.md) §Invariants and apply to the persistence layer defined above.
+
+## 💡 Decision Rationale
+
+- **Primary Factor:** Maintainability through explicit schema contracts
+- **Secondary Factor:** Debugging efficiency with predictable payload structures
+- **Trade-offs Accepted:** Schema changes must be coordinated across all dependent modules
 
 ## ⚖️ Considerations / Alternatives Considered
 
@@ -36,13 +42,13 @@ The persistence (SQLite) and configuration (`config.yaml` deprecation) mandates 
 *Cons:* Leads to "schema drift," where different parts of the system implicitly agree on data structures, making refactoring impossible.
 *Rationale for Rejection:* Unmaintainable for a production-grade benchmarking tool.
 
-## 🚀 Consequences
+## 📊 Impact Analysis
 
-### 🟢 Positive Consequences
+### 🟢 Positive Impacts
 * Ensures that any component—whether backend, frontend, or persistence—can rely on a predictable data structure.
 * Simplifies debugging by providing a single place to reference the expected payload structure.
 
-### 🔴 Negative Consequences / Trade-offs
+### 🔴 Negative Impacts / Trade-offs
 * Requires discipline. any change to the schema must be treated as a breaking change and updated across all dependent modules (API, UI, DB).
 
 ## 🔗 Related ADRs

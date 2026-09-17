@@ -6,11 +6,20 @@
       "label": "start-server",
       "command": "python -m local_llm_benchmark",
       "isBackground": true,
-      "group": "none",
-      "problemMatcher": "$tsc-watch",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [],
       "presentation": {
         "reveal": "never"
       }
+    },
+    {
+      "type": "shell",
+      "label": "run-tests",
+      "command": "python -m pytest -q",
+      "dependsOn": ["start-server"]
     }
   ]
 }

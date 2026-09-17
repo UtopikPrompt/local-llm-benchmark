@@ -154,7 +154,8 @@ async def save_engine(request: dict[str, any], config_path: str | None = None) -
     invalid ``base_url`` raises :class:`BadRequest` via the engine's validation.
     """
     path = _resolve_config(config_path)
-    data = load_config(str(path))
+    root_path = request.get("root_path")
+    data = load_config(str(path), root_path)
     engine = _engine_from_request(request)
     data.engines.append(engine)
     save_config(str(path), data)

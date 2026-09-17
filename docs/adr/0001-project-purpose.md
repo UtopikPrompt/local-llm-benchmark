@@ -1,27 +1,31 @@
 # Architectural Decision Record (ADR) - Project Overview
 
 **Title:** Benchmarking Framework Design
-**Status:** Accepted
+**Status:** [`.pill` Status: Accepted]
 **Date:** 2026-09-16
 **Authors:** AI Assistant
 
 ---
 
-## 🎯 1. Context
-
-*Describe the problem or situation that necessitated this decision. Why are we doing this? What are the constraints?*
+## 📋 Problem Statement / Motivation
 
 The goal of this entire project is to create a robust and comprehensive benchmarking framework. The system must compare the performance and quality of various LLM engines and the models running on those engines. All persistent data, including benchmark results and metadata, **MUST** be stored using **SQLite** as the single source of truth, replacing all prior configuration and data layers (including usage of `config.yaml`). The core complexity remains comparing results across models and challenges.
 
-## ✨ 2. Decision
+## ✨ Decision
 
 The project will function as a multi-faceted benchmarking tool that:
 1. Allows the user to select multiple LLM models and multiple benchmarks/challenges.
 2. Orchestrates the execution of all selected combinations.
 3. **Mandates SQLite:** All data storage, including benchmarking results, must exclusively utilize a SQLite database.
 4. **Configuration Source:** System configuration and runtime parameters must be managed programmatically or via code, and the deprecated `config.yaml` file is no longer to be used for runtime data or configuration.
-3. Runs all selected tasks across all selected models simultaneously (or in managed batches).
-4. Collects and aggregates results (score, latency, pass/fail status) for every unique engine/model/challenge combination to provide a holistic comparison dashboard.
+5. Runs all selected tasks across all selected models simultaneously (or in managed batches).
+6. Collects and aggregates results (score, latency, pass/fail status) for every unique engine/model/challenge combination to provide a holistic comparison dashboard.
+
+## 💡 Decision Rationale
+
+- **Primary Factor:** Maintainability and scalability through centralized SQLite persistence
+- **Secondary Factor:** Eliminating configuration file dependencies for runtime flexibility
+- **Trade-offs Accepted:** Increased runtime complexity from concurrent execution management
 
 ## ⚖️ Considerations / Alternatives Considered
 
@@ -35,13 +39,13 @@ The project will function as a multi-faceted benchmarking tool that:
 *Cons:* Requires significant UI/backend complexity to manage the combinatorial explosion of test cases (Engine * Model * Challenge).
 *Rationale for Rejection:* While granular, the system needs an automated, structured way to manage the execution graph, which the current design of running all tasks simultaneously addresses better.
 
-## 🚀 Consequences
+## 📊 Impact Analysis
 
-### 🟢 Positive Consequences
+### 🟢 Positive Impacts
 * Provides a single source of truth for comparing different LLM providers and models side-by-side.
 * Establishes a clear API contract for test case execution across various backends.
 
-### 🔴 Negative Consequences / Trade-offs
+### 🔴 Negative Impacts / Trade-offs
 * **Complexity:** The runner logic (`runner.py`/`services.py`) must handle concurrent or semi-concurrent execution flows, increasing potential points of failure.
 * **Execution Time:** Running all combinations might be time-consuming.
 

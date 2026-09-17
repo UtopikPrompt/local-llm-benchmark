@@ -1,6 +1,7 @@
 import dom from './dom.js'
 import state from './state.js'
 import { loadModels } from './models.js'
+import { loadEngines } from './models.js'
 import { loadChallenges } from './challenges.js'
 
 export const VIEWS = ['dashboard', 'benchmark', 'challenges']
@@ -55,163 +56,135 @@ async function refreshBenchmarkState() {
     await loadEngines()
     await loadChallenges()
     // Update view state buttons after all loads are complete
-  updateRunButtonState()
+    updateRunButtonState()
 }
 
 /**
- * Loads and renders the available engine list in the UI.
+ * Adds a new custom engine definition via the API.
+ * Fields: name, base_url, model, timeout, max_concurrent.
+ * Opens the engine CRUD modal and populates its fields.
  */
-async function loadEngines() {
-    // Placeholder for actual engine fetching logic (e.g., API call)
-    // Simulate loading data.
-    await new Promise(resolve => setTimeout(resolve, 50)); 
-    
-    const container = state.engineListContainer
-    if (!container) {
-        console.warn("Engine list container (#engine-list) not found in benchmark panel.");
-        return;
-    }
-    
-    // Clearing and re-populating dummy content for demonstration.
-    container.innerHTML = ''; 
-    
-    // In a real application, this would fetch from a service.
-    const dummyEngines = [
-        { id: 'openai_compat', name: 'OpenAI Compatible Engine', selected: true },
-        { id: 'local_llm', name: 'Local LLM Benchmark Engine', selected: false }
-    ]
-    
-    state.allEngines = dummyEngines
-    state.selectedEngines = dummyEngines.filter(e => e.selected).map(e => e.id)
-
-    // Simple rendering logic for demonstration
-    const engineOptionsHtml = `
-        <div class="form-check form-engine-selection mb-3">
-            <input class="form-check-input" type="checkbox" id="engine-openai_compat" checked data-engine-id="openai_compat">
-            <label class="form-check-label" for="engine-openai_compat">
-                OpenAI Compatible Engine
-            </label>
-        </div>
-        <div class="form-check form-engine-selection mb-3">
-            <input class="form-check-input" type="checkbox" id="engine-local_llm" data-engine-id="local_llm">
-            <label class="form-check-label" for="engine-local_llm">
-                Local LLM Benchmark Engine
-            </label>
-        </div>
-        <button class="btn btn-secondary mt-3" id="add-engine-btn">
-            + Add Custom Engine
-        </button>
-    `.trim();
-
-    container.innerHTML = engineOptionsHtml;
-
-    // Attach event listeners to the new elements
-    container.querySelectorAll('.form-check-input').forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => {
-            const engineId = e.target.getAttribute('data-engine-id');
-            const isChecked = e.target.checked;
-
-            if (isChecked) {
-                if (!state.selectedEngines.includes(engineId)) {
-                    state.selectedEngines.push(engineId);
-                }
-            } else {
-                state.selectedEngines = state.selectedEngines.filter(id => id !== engineId);
-            }
-            updateRunButtonState();
-        });
-    });
-    
-    // Attach listener for Add Engine button
-    document.getElementById('add-engine-btn')?.addEventListener('click', handleAddEngineClick);
-}
-
-/**
- * Placeholder handler for adding a new engine.
- * This function now simulates triggering a dedicated modal/view for engine CRUD operations.
- */
-function handleAddEngineClick() {
-    console.log("--- ENGINE CRUD Workflow Triggered ---");
-    
-    // 1. Simulate opening a Modal/Dedicated View
-    const modalId = 'engine-crud-modal';
-    let modal = document.getElementById(modalId);
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = modalId;
-        modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;';
-        modal.innerHTML = `
-            <div class="card p-4" style="width: 400px; background: white;">
-                <h4 class="card-title">Manage Engine Definition</h4>
-                <p class="card-text">This view handles Create, Read, Update, and Delete operations for custom engines.</p>
-                
-                <div class="form-group mb-3">
-                    <label for="engine-name">Engine Name (Read)</label>
-                    <input type="text" class="form-control engine-name-input" id="engine-name" value="New Custom Engine">
-                </div>
-                <div class="form-group mb-3">
-                    <label for="engine-id">Unique ID (Read)</label>
-                    <input type="text" class="form-control engine-id-input" id="engine-id" value="custom_engine_abc" readonly>
-                </div>
-                <div class="form-group mb-3">
-                    <label for="engine-type">Engine Type (Read)</label>
-                    <select class="form-control" id="engine-type">
-                        <option>LLM Provider</option>
-                        <option>Local Benchmarker</option>
-                        <option>External API</option>
-                    </select>
-                </div>
-                
-                <button class="btn btn-success me-2" id="save-engine-btn-widget">Save/Update</button>
-                <button class="btn btn-danger" id="delete-engine-btn-widget">Delete</button>
-            </div>
-        `;
-        document.body.appendChild(modal);
-    } else {
-        modal.style.display = 'flex';
-    }
-
-    // Attach save listener
-    document.getElementById('save-engine-btn-widget')?.addEventListener('click', handleSaveEngine);
-    // Attach delete listener
-    document.getElementById('delete-engine-btn-widget')?.addEventListener('click', handleDeleteEngine);
+async function handleAddEngineClick() {
+    const modal = getEngineModal()
+    if (!modal) return
+    document.getElementById('engine-name').value = 'New Custom Engine'
+    document.getElementById('engine-base-url').value = ''
+    document.getElementById('engine-model').value = ''
+    showEngineModal(modal)
 }
 
 /**
  * Handles saving or updating an engine definition (Create/Update).
  */
-function handleSaveEngine() {
-    const id = document.getElementById('engine-id');
-    const name = document.getElementById('engine-name');
-    
-    if (!id || !name) {
-        alert("Engine ID and Name are required.");
-        return;
+async function handleSaveEngine() {
+    const name = document.getElementById('engine-name')?.value.trim()
+    const base_url = document.getElementById('engine-base-url')?.value.trim()
+    const model = document.getElementById('engine-model')?.value.trim()
+
+    if (!name) {
+        alert("Engine name is required.")
+        return
     }
-    
-    console.log(`[API CALL] Attempting to CREATE or UPDATE engine: ID=${id.value}, Name=${name.value}`);
-    
-    // Simulate API call and success
-    alert(`[SUCCESS] Engine Definition saved/updated: ${name.value} (ID: ${id.value}). The system will now re-read engine configurations.`);
-    
-    // Trigger a state refresh to reflect the new engine
-    refreshBenchmarkState(); 
+
+    try {
+        const res = await fetch('/api/config/engines', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ base_url, model })
+        })
+        const text = await res.text()
+        console.log('API response text:', text)
+        if (!res.ok) {
+            const errorData = JSON.parse(text)
+            alert(`Failed to add engine: ${JSON.stringify(errorData) || 'unknown error'}`)
+            return
+        }
+        alert(`Engine "${name}" added successfully.`)
+        hideEngineModal()
+        await refreshBenchmarkState()
+    } catch (e) {
+        alert(`Error adding engine: ${e.message}`)
+    }
 }
 
 /**
  * Handles deleting an engine definition (Delete).
  */
-function handleDeleteEngine() {
-    const id = document.getElementById('engine-id').value;
+async function handleDeleteEngine() {
+    const id = document.getElementById('engine-id')?.value.trim()
     if (confirm(`WARNING: Are you sure you want to DELETE the engine with ID: ${id}? This action cannot be undone.`)) {
-        console.log(`[API CALL] Attempting to DELETE engine: ID=${id}`);
-        
-        // Simulate API call and success
-        alert(`[SUCCESS] Engine Definition deleted for ID: ${id}. The system will now re-read engine configurations.`);
-        
-        // Trigger a state refresh to reflect the deletion
-        refreshBenchmarkState();
+        try {
+            const res = await fetch(`/api/config/engines/${id}`, { method: 'DELETE' })
+            const data = await res.json()
+            if (!res.ok) {
+                alert(`Failed to delete engine: ${data.detail || 'unknown error'}`)
+                return
+            }
+            alert(`Engine "${id}" deleted successfully.`)
+            hideEngineModal()
+            await refreshBenchmarkState()
+        } catch (e) {
+            alert(`Error deleting engine: ${e.message}`)
+        }
     }
+}
+
+/**
+ * Returns the engine CRUD modal, creating it if it doesn't exist.
+ */
+function getEngineModal() {
+    const modalId = 'engine-crud-modal'
+    let modal = document.getElementById(modalId)
+    if (!modal) {
+        modal = document.createElement('div')
+        modal.id = modalId
+        modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 2000; backdrop-filter: blur(4px);'
+        modal.innerHTML = `
+            <div class="engine-modal-card">
+                <h4 class="engine-modal-title">Manage Engine Definition</h4>
+                <p class="engine-modal-description">This view handles Create, Read, Update, and Delete operations for custom engines.</p>
+                
+                <div class="engine-form-group">
+                    <label class="engine-form-label" for="engine-name">Engine Name</label>
+                    <input type="text" class="engine-form-control engine-name-input" id="engine-name" value="New Custom Engine">
+                </div>
+                <div class="engine-form-group">
+                    <label class="engine-form-label" for="engine-base-url">Base URL</label>
+                    <input type="text" class="engine-form-control engine-base-url-input" id="engine-base-url" value="">
+                </div>
+                <div class="engine-form-group">
+                    <label class="engine-form-label" for="engine-model">Model</label>
+                    <input type="text" class="engine-form-control engine-model-input" id="engine-model" value="">
+                </div>
+                
+                <div class="engine-buttons">
+                    <button class="engine-btn engine-btn-save" id="save-engine-btn-widget">Save/Update</button>
+                    <button class="engine-btn engine-btn-delete" id="delete-engine-btn-widget">Delete</button>
+                    <button class="engine-btn engine-btn-cancel" id="cancel-engine-btn-widget">Cancel</button>
+                </div>
+            </div>
+        `
+        document.body.appendChild(modal)
+    }
+    return modal
+}
+
+/**
+ * Shows the engine CRUD modal.
+ */
+function showEngineModal(modal) {
+    modal.style.display = 'flex'
+    document.getElementById('save-engine-btn-widget')?.addEventListener('click', handleSaveEngine)
+    document.getElementById('delete-engine-btn-widget')?.addEventListener('click', handleDeleteEngine)
+    document.getElementById('cancel-engine-btn-widget')?.addEventListener('click', hideEngineModal)
+}
+
+/**
+ * Hides the engine CRUD modal.
+ */
+function hideEngineModal() {
+    const modal = document.getElementById('engine-crud-modal')
+    if (modal) modal.style.display = 'none'
 }
 
 /**
@@ -254,7 +227,7 @@ function updateRunButtonState(button) {
 }
 
 // Named function for explicit initialization control
-export function initializeViewSwitcher() {
+function initializeViewSwitcher() {
   // Event delegation setup
   document.querySelector("#header-nav")?.addEventListener("click", (e) => {
     const tab = e.target.closest(".nav-tab")
@@ -263,8 +236,19 @@ export function initializeViewSwitcher() {
     }
   })
 
+  // Wire the "Add Engine" button (defined in dashboard.html) to the engine
+  // CRUD modal. Only active while the benchmark panel is shown.
+  const addEngineBtn = document.getElementById("add-engine")
+  if (addEngineBtn) {
+    addEngineBtn.addEventListener("click", handleAddEngineClick)
+  }
+
   // Establish initial view state
   switchView(state.activeView || "dashboard")
   // Re-calling this at the end of the file to ensure the initial state is checked
   updateRunButtonState()
+}
+
+export {
+  initializeViewSwitcher,
 }

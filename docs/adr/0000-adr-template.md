@@ -1,13 +1,13 @@
 # Architectural Decision Record (ADR) - Template
 
 * **Title:** [Short, Descriptive Title of the Decision]
-* **Status:** Proposed / Accepted / Deprecated
+* **Status:** [`.pill` Status: Proposed / Accepted / Deprecated]
 * **Date:** YYYY-MM-DD
 * **Authors:** [Your Name/Team]
 
 ---
 
-## 🎯 Context
+## 📋 Problem Statement / Motivation
 
 *Describe the problem or situation that necessitated this decision. Why are we doing this? What are the constraints?*
 
@@ -18,6 +18,14 @@
 *State the chosen approach clearly and concisely. This is the core outcome.*
 
 [The definitive decision being recorded.]
+
+## 💡 Decision Rationale
+
+*Explain why this decision was made over alternatives. This adds depth and justifies the choice.*
+
+- **Primary Factor:** [e.g., Maintainability, performance, scalability]
+- **Secondary Factor:** [e.g., Team familiarity, existing patterns]
+- **Trade-offs Accepted:** [What compromises were made intentionally]
 
 ## ⚖️ Considerations / Alternatives Considered
 
@@ -33,15 +41,13 @@
 *Cons:* [List of drawbacks]
 *Rationale for Rejection:* [Why this was rejected]
 
-## 🚀 Consequences
+## 📊 Impact Analysis
 
-*What are the implications of this decision? This section affects future development and should be detailed.*
-
-### 🟢 Positive Consequences
+### 🟢 Positive Impacts
 * [Effect 1]: How this improves the system.
 * [Effect 2]: New capabilities unlocked.
 
-### 🔴 Negative Consequences / Trade-offs
+### 🔴 Negative Impacts / Trade-offs
 * [Trade-off 1]: e.g., Increased complexity, reduced performance in one area.
 * [Trade-off 2]: What we are explicitly choosing *not* to do.
 
@@ -54,7 +60,16 @@
 
 **To use this template:**
 1. Update the `Title` and `Date`.
-2. Fill in the `Context` section with the background problem.
+2. Fill in the `Problem Statement / Motivation` section with the background problem.
 3. Select the best approach in the `Decision` section.
-4. Document the alternatives and why they failed in `Considerations`.
-5. Document the trade-offs and downstream effects in `Consequences`.
+4. Document the decision rationale in the new `Decision Rationale` section.
+5. Document alternatives and why they failed in `Considerations`.
+6. Document impacts in `Impact Analysis`.
+7. Link to related ADRs in the `Related ADRs` section.
+
+---
+
+**Formatting Tips:**
+- Use emoji headers for section titles (e.g., `## 📋 Problem Statement`)
+- Use bullet points with proper indentation for lists
+- Keep sections concise but comprehensive

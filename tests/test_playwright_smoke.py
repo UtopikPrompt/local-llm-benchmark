@@ -140,3 +140,45 @@ def test_select_all_models(browser_url):
         )
 
         browser.close()
+
+
+def test_add_engine_button(browser_url):
+    """Acceptance test for the 'Add Engine' button in the Benchmark panel.
+
+    Clicking the button should open the engine CRUD modal with the expected
+    fields, per ADR 0008/0009 and the frontend engine-modality pattern.
+    """
+    url = browser_url
+    print("URL:", url)
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.goto(url)
+        print("title:", page.title())
+
+        # The side menu (Benchmark panel) renders after a short delay.
+        page.wait_for_selector("#add-engine", timeout=10000)
+
+        add_engine = page.locator("#add-engine")
+        assert add_engine.count() == 1, "expected exactly one Add Engine button"
+        assert add_engine.is_visible(), "Add Engine button should be visible"
+
+        # Click the button -> modal should open.
+        add_engine.click()
+        page.wait_for_selector("#engine-crud-modal", timeout=10000)
+
+        modal = page.locator("#engine-crud-modal")
+        assert modal.is_visible(), "engine CRUD modal should open after clicking Add Engine"
+        assert modal.get_attribute("hidden") is None, "modal should not be hidden"
+
+        # The modal should contain the expected fields.
+        assert page.locator("#engine-name").count() == 1, "modal missing engine name field"
+        assert page.locator("#engine-base-url").count() == 1, "modal missing base URL field"
+        assert page.locator("#engine-model").count() == 1, "modal missing model field"
+
+        # The save button should be enabled.
+        save_button = page.locator("#save-engine-btn-widget")
+        assert save_button.count() == 1, "modal missing save button"
+        assert save_button.is_not_disabled(), "save button should be enabled"
+
+        browser.close()

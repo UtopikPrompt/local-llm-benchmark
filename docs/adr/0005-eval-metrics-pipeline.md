@@ -1,19 +1,19 @@
 # Architectural Decision Record (ADR) - Evaluation Metrics Pipeline and Aggregation Rules
 
 **Title:** Evaluation Metrics Pipeline and Aggregation Rules
-**Status:** Accepted
+**Status:** [`.pill` Status: Accepted]
 **Date:** 2026-09-14
 **Authors:** AI Assistant
 
 ---
 
-## 🎯 1. Context
+## 📋 Problem Statement / Motivation
 
 *The raw output from a benchmark run must be transformed into meaningful, comparative metrics displayed on the dashboard.*
 
 Raw output contains granular data points (e.g., raw response text, individual task scores, latency for each sub-step). However, the user needs a summarized, reliable view (e.g., average score, overall pass rate, comparative ranking). This ADR defines the immutable rules for this transformation.
 
-## ✨ 2. Decision
+## ✨ Decision
 
 All raw data processing for final metrics must happen in a dedicated, isolated service (or module, e.g., `local_llm_benchmark/eval/quality.py`). The process will be a multi-stage pipeline:
 1.  **Raw Data Ingestion:** Accept the raw list of results (per-task, per-model, per-engine).
@@ -21,6 +21,12 @@ All raw data processing for final metrics must happen in a dedicated, isolated s
 3.  **Normalization & Serialization:** Standardize the calculated metrics into the final schema (e.g., rounding scores, converting status flags).
 
 The persistence and configuration mandates are enforced in [ADR 0001](0001-project-purpose.md) §Invariants.
+
+## 💡 Decision Rationale
+
+- **Primary Factor:** Integrity through centralized metrics calculation
+- **Secondary Factor:** Auditability with preserved re-computation capability
+- **Trade-offs Accepted:** High importance of the `eval/quality.py` module requiring rigorous testing
 
 ## ⚖️ Considerations / Alternatives Considered
 
@@ -34,13 +40,13 @@ The persistence and configuration mandates are enforced in [ADR 0001](0001-proje
 *Cons:* Breaks the ability to easily re-run analysis or audit historical results if the scoring rules change.
 *Rationale for Rejection:* While good for performance, we must preserve the ability to re-run calculations with updated logic.
 
-## 🚀 Consequences
+## 📊 Impact Analysis
 
-### 🟢 Positive Consequences
+### 🟢 Positive Impacts
 * Guarantees that all reported metrics adhere to the same set of mathematical and logical rules, regardless of where or when the data is queried.
 * Decouples the reporting logic from the data storage layer.
 
-### 🔴 Negative Consequences / Trade-offs
+### 🔴 Negative Impacts / Trade-offs
 * The `eval/quality.py` module will become highly important and sensitive to change, requiring rigorous unit testing.
 
 ## 🔗 Related ADRs

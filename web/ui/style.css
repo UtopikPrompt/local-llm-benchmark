@@ -21,6 +21,8 @@
     --success: var(--stage-4);
     --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
     --font-mono: 'SF Mono', 'Fira Code', Consolas, monospace;
+    --font-display: var(--font-primary);
+    --text-on-primary: #e5e2e1;
 }
 
 .action-button {
@@ -415,6 +417,22 @@ body {
     letter-spacing: 0.5px;
 }
 
+.icon-plus::before {
+    content: "+";
+}
+
+.icon-refresh::before {
+    content: "\1F501";
+}
+
+.icon-github::before {
+    content: "\1F517";
+}
+
+.icon-plus, .icon-refresh, .icon-github {
+    line-height: 1;
+}
+
 .avatar {
     display: inline-flex;
     align-items: center;
@@ -480,6 +498,34 @@ body {
 .refresh-models:disabled {
     opacity: 0.6;
     cursor: progress;
+}
+
+.btn-add-engine {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    height: 34px;
+    border: none;
+    border-radius: 7px;
+    background: var(--primary);
+    color: var(--text-on-primary);
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+
+.btn-add-engine:hover {
+    background: var(--primary-hover);
+    color: #fff;
+}
+
+.btn-add-engine:active {
+    transform: translateY(1px);
+    color: #fff;
 }
 
 #engine-list {
@@ -1321,6 +1367,140 @@ body {
     font-style: italic;
 }
 
+/* Engine CRUD Modal */
+#engine-crud-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    backdrop-filter: blur(4px);
+}
+
+.engine-modal-card {
+    width: 400px;
+    background: var(--bg-surface-high);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+
+.engine-modal-title {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    letter-spacing: 0.3px;
+}
+
+.engine-modal-description {
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.engine-form-group {
+    margin-bottom: 16px;
+}
+
+.engine-form-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.engine-form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-primary);
+    font-size: 13px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.engine-form-control:focus {
+    outline: none;
+    border-color: var(--primary-hover);
+    box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+.engine-form-control::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
+.engine-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+.engine-btn {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 7px;
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.engine-btn:hover {
+    transform: translateY(-1px);
+}
+
+.engine-btn:active {
+    transform: translateY(0);
+}
+
+.engine-btn-save {
+    background: var(--success);
+    color: #000;
+}
+
+.engine-btn-save:hover {
+    background: #39ff1488;
+    color: #000;
+}
+
+.engine-btn-delete {
+    background: var(--danger);
+    color: #000;
+}
+
+.engine-btn-delete:hover {
+    background: #f38ba888;
+    color: #000;
+}
+
+.engine-btn-cancel {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+
+.engine-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+}
+
 /* ===== Benchmark panel: challenge checks & progression UI ===== */
 .challenge-checks {
     margin-top: 12px;
@@ -1410,6 +1590,376 @@ body {
     background: linear-gradient(90deg, var(--primary), var(--primary-hover));
     border-radius: 999px;
     transition: width 0.4s ease;
+}
+
+/* ==========================================
+   ADR / RFC Styling (AI Insights Design System)
+   ========================================== */
+
+/* ADR Section Container */
+.adr-section {
+    --adr-bg: var(--bg-surface);
+    --adr-border: var(--border-primary);
+    --adr-header-bg: var(--bg-surface-high);
+    --adr-primary: var(--primary);
+    --adr-primary-glow: var(--primary-glow);
+    
+    background-color: var(--adr-bg);
+    border: 1px solid var(--adr-border);
+    border-radius: var(--pill-radius);
+    padding: 24px;
+    margin: 24px 0;
+    box-shadow: 0 2px 8px var(--shadow-2);
+}
+
+.adr-section * {
+    font-family: var(--font-display);
+}
+
+/* ADR Header */
+.adr-header {
+    background: linear-gradient(135deg, var(--primary-glow) 0%, var(--primary) 100%);
+    color: var(--text-on-primary);
+    padding: 16px 20px;
+    border-radius: var(--pill-radius) var(--pill-radius) 0 0;
+    margin: -24px -24px 20px -24px;
+    border: 1px solid var(--primary-glow);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.adr-header-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-on-primary);
+    margin: 0;
+}
+
+.adr-header-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.adr-header-status.proposed {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
+}
+
+.adr-header-status.accepted {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #86efac;
+}
+
+.adr-header-status.deprecated {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+/* ADR Section Title (if not in header) */
+.adr-section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary-glow);
+    margin: 0 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--primary-glow);
+}
+
+/* ADR Section Content */
+.adr-section-content {
+    color: var(--text-primary);
+    line-height: 1.7;
+}
+
+.adr-section-content * {
+    color: var(--text-primary);
+    font-family: var(--font-body);
+}
+
+.adr-section-content a {
+    color: var(--primary-glow);
+    text-decoration: underline;
+}
+
+/* ADR Emoji Headers */
+.adr-section-content h1, .adr-section-content h2, .adr-section-content h3 {
+    color: var(--primary-glow);
+    margin: 24px 0 12px 0;
+}
+
+.adr-section-content h4 {
+    color: var(--primary);
+    margin: 20px 0 8px 0;
+}
+
+.adr-section-content ul, .adr-section-content ol {
+    margin: 12px 0 16px 24px;
+    padding-left: 16px;
+}
+
+.adr-section-content li {
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+/* ADR Pros/Cons Tables */
+.adr-pros {
+    background: rgba(14, 165, 233, 0.05);
+    border-left: 4px solid var(--primary-glow);
+    padding: 16px;
+    margin: 16px 0;
+    border-radius: var(--pill-radius);
+}
+
+.adr-pros-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.adr-pros-list li {
+    margin-bottom: 8px;
+    padding-left: 24px;
+    position: relative;
+}
+
+.adr-pros-list li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: var(--primary-glow);
+    font-weight: 700;
+}
+
+.adr-cons {
+    background: rgba(220, 38, 38, 0.05);
+    border-left: 4px solid #dc2626;
+    padding: 16px;
+    margin: 16px 0;
+    border-radius: var(--pill-radius);
+}
+
+.adr-cons-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.adr-cons-list li {
+    margin-bottom: 8px;
+    padding-left: 24px;
+    position: relative;
+}
+
+.adr-cons-list li::before {
+    content: "✗";
+    position: absolute;
+    left: 0;
+    color: #dc2626;
+    font-weight: 700;
+}
+
+.adr-alternatives {
+    margin: 16px 0;
+}
+
+.adr-alternative {
+    background: var(--bg-surface-high);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--pill-radius);
+    padding: 16px;
+    margin: 12px 0;
+}
+
+.adr-alternative-title {
+    font-weight: 600;
+    color: var(--primary-glow);
+    margin-bottom: 8px;
+}
+
+.adr-alternative-pros, .adr-alternative-cons {
+    margin: 8px 0;
+    padding-left: 12px;
+}
+
+.adr-alternative-pros::before {
+    content: "Pros: ";
+    font-weight: 600;
+    color: var(--primary-glow);
+}
+
+.adr-alternative-cons::before {
+    content: "Cons: ";
+    font-weight: 600;
+    color: #dc2626;
+}
+
+.adr-alternative-rationale {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-primary);
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+/* ADR Impact Analysis Cards */
+.adr-impact-positive,
+.adr-impact-negative {
+    background: var(--bg-surface-high);
+    border-left: 4px solid var(--primary-glow);
+    padding: 16px;
+    margin: 12px 0;
+    border-radius: var(--pill-radius);
+}
+
+.adr-impact-positive h3,
+.adr-impact-negative h3 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.adr-impact-positive h3 {
+    color: var(--primary-glow);
+}
+
+.adr-impact-negative h3 {
+    color: #dc2626;
+}
+
+.adr-impact-list {
+    margin: 0;
+    padding-left: 16px;
+}
+
+.adr-impact-list li {
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+/* ADR Related Links */
+.adr-related {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-primary);
+}
+
+.adr-related-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-surface-high);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--pill-radius);
+    text-decoration: none;
+    color: var(--primary-glow);
+    font-size: 14px;
+    font-weight: 500;
+    margin: 4px 8px 4px 0;
+    transition: all 0.2s ease;
+}
+
+.adr-related-link:hover {
+    background: var(--primary-glow);
+    color: var(--text-on-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--shadow-2);
+}
+
+.adr-related-link-icon {
+    font-size: 14px;
+}
+
+/* To Use This Template Box */
+.adr-template-box {
+    background: linear-gradient(135deg, var(--primary-glow) 0%, var(--primary) 100%);
+    color: var(--text-on-primary);
+    padding: 20px;
+    border-radius: var(--pill-radius);
+    margin-top: 24px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.adr-template-box h3 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-on-primary);
+}
+
+.adr-template-box ul {
+    margin: 0;
+    padding-left: 20px;
+    line-height: 1.8;
+}
+
+.adr-template-box li {
+    margin-bottom: 6px;
+}
+
+.adr-template-box code {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+}
+
+.adr-template-box pre {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 12px;
+    border-radius: var(--pill-radius);
+    margin: 12px 0;
+    overflow-x: auto;
+}
+
+.adr-template-box code::before,
+.adr-template-box code::after {
+    content: none;
+}
+
+/* Responsive ADR Styling */
+@media (max-width: 768px) {
+    .adr-section {
+        padding: 16px;
+        margin: 16px 0;
+    }
+    
+    .adr-header {
+        padding: 12px 16px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .adr-header-title {
+        font-size: 16px;
+    }
+    
+    .adr-header-status {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .adr-alternative {
+        padding: 12px;
+    }
 }
 
 .bench-status.is-loading {

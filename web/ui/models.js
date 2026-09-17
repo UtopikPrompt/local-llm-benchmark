@@ -193,10 +193,9 @@ function selectAllModels() {
     if (!engineModels[engine]) engineModels[engine] = []
     engineModels[engine].push(cb.value)
   }
-  window.__selectedModels = models
-  window.__engineModels = engineModels
+  state.selectedModels = models
+  state.engineModels = engineModels
   const active = models.length ? models[0] : ''
-  window.__activeModel = active
   state.activeModel = active
   syncSelectAll(document.querySelector('.global-select-all'))
 }
@@ -205,9 +204,8 @@ function selectAllModels() {
 function deselectAllModels() {
   const checkboxes = document.querySelectorAll('.model-checkbox')
   for (const cb of checkboxes) cb.checked = false
-  window.__selectedModels = []
-  window.__engineModels = {}
-  window.__activeModel = ''
+  state.selectedModels = []
+  state.engineModels = {}
   state.activeModel = ''
   syncSelectAll(document.querySelector('.global-select-all'))
 }
@@ -241,10 +239,9 @@ function setSelectedModels() {
     engineModels[engine].push(model)
     models.push(model)
   }
-  window.__selectedModels = models
-  window.__engineModels = engineModels
+  state.selectedModels = models
+  state.engineModels = engineModels
   const active = models.length ? models[0] : ''
-  window.__activeModel = active
   state.activeModel = active
   syncSelectAll(document.querySelector('.global-select-all'))
 }
@@ -252,15 +249,15 @@ function setSelectedModels() {
 // Build a run request payload from the active model & selection.
 function buildRunRequest(model) {
   const request = { model }
-  if (window.__selectedModels && window.__selectedModels.length > 0) {
-    request.model_names = window.__selectedModels
+  if (state.selectedModels && state.selectedModels.length > 0) {
+    request.model_names = state.selectedModels
   }
   return request
 }
 
 // Serialize the selection for the form-data field (comma-joined names).
 function serializeSelectedModels() {
-  const names = window.__selectedModels || []
+  const names = state.selectedModels || []
   return names.length ? names.join(',') : ''
 }
 
@@ -378,10 +375,9 @@ function selectAllChallenges() {
     if (!challengeMap[key]) challengeMap[key] = []
     challengeMap[key].push(cb.value)
   }
-  window.__selectedChallenges = challenges
-  window.__challengeMap = challengeMap
+  state.selectedChallenges = challenges
+  state.challengeMap = challengeMap
   const active = challenges.length ? challenges[0] : ''
-  window.__activeChallenge = active
   state.activeChallenge = active
   syncSelectAllChallenges(document.querySelector('.global-select-all-challenge'))
 }
@@ -392,16 +388,10 @@ function selectAllChallenges() {
 function deselectAllChallenges() {
   const checkboxes = document.querySelectorAll('.challenge-checkbox')
   for (const cb of checkboxes) cb.checked = false
-  window.__selectedChallenges = []
-  window.__challengeMap = {}
-  window.__activeChallenge = ''
-  state.activeChallenge = ''
-  syncSelectAllChallenges(document.querySelector('.global-select-all-challenge'))
+  state.selectedChallenges = []
+  state.challengeMap = {}
 }
 
-/**
- * Toggles the global challenge checkbox and re-syncs the global state.
- */
 function toggleSelectAllChallenges(checkbox) {
   if (checkbox.checked) selectAllChallenges()
   else deselectAllChallenges()
@@ -421,10 +411,9 @@ function setSelectedChallenges() {
     challengeMap[key].push(challenge)
     challenges.push(challenge)
   }
-  window.__selectedChallenges = challenges
-  window.__challengeMap = challengeMap
+  state.selectedChallenges = challenges
+  state.challengeMap = challengeMap
   const active = challenges.length ? challenges[0] : ''
-  window.__activeChallenge = active
   state.activeChallenge = active
   syncSelectAllChallenges(document.querySelector('.global-select-all-challenge'))
 }
@@ -436,8 +425,8 @@ function setSelectedChallenges() {
  */
 function buildChallengeRunRequest(challengeId) {
   const request = { challengeId }
-  if (window.__selectedChallenges && window.__selectedChallenges.length > 0) {
-    request.challenge_ids = window.__selectedChallenges
+  if (state.selectedChallenges && state.selectedChallenges.length > 0) {
+    request.challenge_ids = state.selectedChallenges
   }
   return request
 }
@@ -446,7 +435,7 @@ function buildChallengeRunRequest(challengeId) {
  * Serializes the selection for the form-data field (comma-joined IDs).
  */
 function serializeSelectedChallenges() {
-  const ids = window.__selectedChallenges || []
+  const ids = state.selectedChallenges || []
   return ids.length ? ids.join(',') : ''
 }
 
@@ -476,27 +465,27 @@ async function refreshAll() {
 }
 
 export {
-  engineBaseURL,
-  loadModels,
-  formatModelName,
-  renderModelCheckboxes,
-  attachModelListeners,
-  setSelectedModels,
-  toggleSelectAllModels,
-  selectAllModels,
-  deselectAllModels,
-  renderSelectAllCheckbox,
-  syncSelectAll,
-  buildRunRequest,
-  serializeSelectedModels,
-  loadEngines,
-  loadChallenges,
-  renderChallengeCheckboxes,
   attachChallengeListeners,
-  setSelectedChallenges,
-  toggleSelectAllChallenges,
-  selectAllChallenges,
+  attachModelListeners,
   buildChallengeRunRequest,
-  serializeSelectedChallenges,
+  buildRunRequest,
+  deselectAllModels,
+  engineBaseURL,
+  formatModelName,
+  loadChallenges,
+  loadEngines,
+  loadModels,
   refreshAll,
+  renderChallengeCheckboxes,
+  renderModelCheckboxes,
+  renderSelectAllCheckbox,
+  selectAllChallenges,
+  selectAllModels,
+  serializeSelectedChallenges,
+  serializeSelectedModels,
+  setSelectedChallenges,
+  setSelectedModels,
+  syncSelectAll,
+  toggleSelectAllChallenges,
+  toggleSelectAllModels,
 }

@@ -1,19 +1,19 @@
 # Architectural Decision Record (ADR) - Engine CRUD User Interface
 
 **Title:** Engine CRUD User Interface
-**Status:** Proposed
+**Status:** [`.pill` Status: Proposed]
 **Date:** 2026-09-17
 **Authors:** AI Assistant
 
 ---
 
-## 🎯 1. Context
+## 📋 Problem Statement / Motivation
 
 Engine definitions (e.g., `openai_compat`, `local_llm`) are central configuration objects. Once ADR-0008 established a RESTful API for their lifecycle, the front-end required a way to expose that API to operators without requiring code changes to add or retire an engine.
 
 The benchmarking web dashboard (`web/ui/views.js`) already renders the set of selectable engines on the benchmark panel. Operators need to be able to add a new engine, edit its metadata, and delete it directly from the UI. Any approach chosen here must respect the ESM module architecture (ADR-0002), the Controller/Service separation (ADR-0006), and the dynamic module discovery pattern (ADR-0007).
 
-## ✨ 2. Decision
+## ✨ Decision
 
 The engine CRUD capability will be implemented as a client-side, event-driven workflow anchored in the benchmark view.
 
@@ -22,6 +22,12 @@ The engine CRUD capability will be implemented as a client-side, event-driven wo
 3. **Modal CRUD handlers:** `handleSaveEngine()` performs a simulated `POST`/`PUT` to the Engine Management API and `handleDeleteEngine()` performs a simulated `DELETE`, each followed by a `refreshBenchmarkState()` call.
 4. **View switching:** `switchView()` is an `async` function that loads the relevant module state (models, engines, challenges) before rendering, ensuring the engine list reflects the current selection.
 5. **Persistence & validation:** Actual writes are delegated to the service layer; the UI only performs optimistic updates and refreshes.
+
+## 💡 Decision Rationale
+
+- **Primary Factor:** Operator accessibility without code deployment
+- **Secondary Factor:** Contained UI changes respecting ESM module boundaries
+- **Trade-offs Accepted:** Simulated API calls as placeholders; modal state not persisted
 
 ## ⚖️ Considerations / Alternatives Considered
 
@@ -40,14 +46,14 @@ The engine CRUD capability will be implemented as a client-side, event-driven wo
 *Cons:* Operators cannot add engines without a developer; contradicts the maintainability goal of ADR-0008.
 *Rationale for Rejection:* The whole point of the Engine Management API is to make engine management operational, not developer-only.
 
-## 🚀 Consequences
+## 📊 Impact Analysis
 
-### 🟢 Positive Consequences
+### 🟢 Positive Impacts
 * Operators can add, edit, and retire engines through the dashboard without deploying code.
 * The UI change is contained within `views.js`; the service and controller layers (ADR-0006) remain untouched by presentation concerns.
 * A single `refreshBenchmarkState()` call keeps selection, run-button state, and engine list in sync.
 
-### 🔴 Negative Consequences / Trade-offs
+### 🔴 Negative Impacts / Trade-offs
 * Simulated API calls in the handlers are placeholders; wiring them to real fetch calls risks inconsistency between UI behavior and service implementation.
 * Modal state (open/closed, in-flight requests) is not yet persisted, so rapid successive saves could collide.
 
@@ -57,11 +63,3 @@ The engine CRUD capability will be implemented as a client-side, event-driven wo
 * [ESM Module Architecture](0002-esm-module-architecture.md) (ID: 2) — `views.js` exports must remain module-scoped.
 * [API Design and Service Boundaries](0006-api-service-boundaries.md) (ID: 6) — write operations are delegated to the service layer.
 
----
-
-**To use this template:**
-1. Update the `Title` and `Date`.
-2. Fill in the `Context` section with the background problem.
-3. Select the best approach in the `Decision` section.
-4. Document the alternatives and why they failed in `Considerations`.
-5. Document the trade-offs and downstream effects in `Consequences`.

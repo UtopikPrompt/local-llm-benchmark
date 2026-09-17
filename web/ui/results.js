@@ -7,6 +7,7 @@ import state from './state.js'
 import dom from './dom.js'
 import { serializeSelectedModels, buildRunRequest } from './models.js'
 import { loadChallenges, toggleCategoryFilter, perCardStatus } from './challenges.js'
+import { escapeHtml } from './utils.js'
 
 // Return the currently active view panel. ALL results-panel lookups must go
 // through this panel because ``dom.getEl`` falls back to
@@ -56,7 +57,8 @@ function displayResults(results, modelNames, benchmarkType) {
     // No model selected: render the empty-state instead of a results table.
     const resultsContainer = state.resultsContainer
     resultsContainer.innerHTML = ''
-    resultsContainer.appendChild(createRunState())
+    const emptyState = createRunState()
+    if (emptyState) resultsContainer.appendChild(emptyState)
     return
   }
   if (!state.resultsRendered) {
@@ -72,7 +74,8 @@ function displayResults(results, modelNames, benchmarkType) {
 
   if (modelNames && modelNames.length === 0) {
     resultsContainer.innerHTML = ''
-    resultsContainer.appendChild(createRunState())
+    const emptyState = createRunState()
+    if (emptyState) resultsContainer.appendChild(emptyState)
     return
   }
 
@@ -142,6 +145,15 @@ function onRunStateClick(event) {
   }
 }
 
+function ensureRunState() {
+  const resultsContainer = state.resultsContainer
+  const runButton = dom.getEl(resultsContainer, '#run-button')
+  const runNote = dom.getEl(resultsContainer, '#run-note')
+  if (!runButton || !runNote) return null
+  runNote.textContent = 'Run benchmark for selected models'
+  return [runButton, runNote]
+}
+
 function createRunState() {
   const found = ensureRunState()
   if (!found) return null
@@ -159,7 +171,7 @@ function createRunState() {
     runNote.textContent = 'Select at least one model to run a benchmark.'
     runButton.removeAttribute('disabled')
   }
-  return runButton
+  return runButton || null
 }
 
 function buildResultsTable(results, modelNames, benchmarkType) {
@@ -218,6 +230,14 @@ function updateResultsCount(visible) {
   resultsCount.textContent = visible + ' shown'
 }
 
+// Load and initialize benchmark results data.
+async function loadBenchmarkResults() {
+  // Load challenges and initialize per-card status tracking.
+  await loadChallenges()
+  // Initial display of results panel (empty state).
+  displayResults([], [], 'quality')
+}
+
 // Run a benchmark for the currently active model.
 async function runBenchmark() {
   const resultsContainer = state.resultsContainer
@@ -243,16 +263,6 @@ async function runBenchmark() {
   }
 }
 
-function escapeHtml(value) {
-  if (value === null || value === undefined) return ''
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-}
-
 const RESULTS_CATEGORIES = '#results-categories';
 
 export {
@@ -261,6 +271,6 @@ export {
   renderResult,
   displayResults,
   updateResultsCount,
-  escapeHtml,
   runBenchmark,
+  loadBenchmarkResults,
 }

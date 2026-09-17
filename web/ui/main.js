@@ -4,13 +4,7 @@ import state from './state.js'
 import { initializeViewSwitcher } from './views.js'
 
 // 1. Hydrate state
-state.selectedModels = window.__selectedModels || []
-state.selectedEngine = window.__selectedEngine || ''
-state.engineModels = window.__engineModels || {}
-state.activeModel = window.__activeModel || ''
-state.engines = window.__engines || []
-state.tasks = window.__tasks || []
-window.__tasks = [] 
+// Hydration: no persisted globals exist, so the imported `state` holds defaults.
 
 // 2. Direct initialization using top-level await
 initializeViewSwitcher()

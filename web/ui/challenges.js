@@ -5,7 +5,7 @@
 // (re)rendered on demand by the filter.
 import dom from './dom.js'
 import state from './state.js'
-import { escapeHtml } from './results.js'
+import { escapeHtml } from './utils.js'
 
 // Module-level: active challenge category filter (null = show all).
 let activeCategory = null

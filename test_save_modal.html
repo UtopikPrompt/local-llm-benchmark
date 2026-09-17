@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Save Modal</title>
+    <link rel="stylesheet" href="/web/ui/style.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f1218;
+            color: #e2e8f0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .engine-btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: none;
+            font-weight: 500;
+            margin: 4px;
+        }
+        .engine-btn-save {
+            background-color: #003a7d;
+            color: white;
+        }
+        .engine-btn-delete {
+            background-color: #b91c1c;
+            color: white;
+        }
+        .engine-btn-cancel {
+            background-color: #475569;
+            color: white;
+        }
+        .engine-btn:hover {
+            opacity: 0.9;
+        }
+        .engine-modal-card {
+            background-color: #1e293b;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid #334155;
+            max-width: 400px;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+        }
+        .engine-modal-title {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            color: #f1f5f9;
+        }
+        .engine-modal-description {
+            margin: 0 0 20px 0;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+        .engine-form-group {
+            margin-bottom: 16px;
+        }
+        .engine-form-label {
+            display: block;
+            margin-bottom: 6px;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+        .engine-form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .engine-form-control:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .engine-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Test Save Engine Modal</h1>
+        <p>This is a standalone test of the engine save modal functionality.</p>
+        <div>
+            <button class="engine-btn engine-btn-save" id="save-engine-btn">Save/Update</button>
+            <button class="engine-btn engine-btn-delete" id="delete-engine-btn">Delete</button>
+            <button class="engine-btn engine-btn-cancel" id="cancel-engine-btn">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        // Store state in global scope
+        window.engineModal = null;
+        window.saveEngine = null;
+        window.deleteEngine = null;
+
+        // Engine CRUD modal
+        function getEngineModal() {
+            if (window.engineModal) return window.engineModal;
+
+            window.engineModal = document.createElement('div');
+            window.engineModal.id = 'engine-crud-modal';
+            window.engineModal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 9998; backdrop-filter: blur(4px);';
+            
+            window.engineModal.innerHTML = `
+                <div class="engine-modal-card">
+                    <h4 class="engine-modal-title">Manage Engine Definition</h4>
+                    <p class="engine-modal-description">This view handles Create, Read, Update, and Delete operations for custom engines.</p>
+                    
+                    <div class="engine-form-group">
+                        <label class="engine-form-label" for="engine-name">Engine Name</label>
+                        <input type="text" class="engine-form-control engine-name-input" id="engine-name" value="New Custom Engine">
+                    </div>
+                    <div class="engine-form-group">
+                        <label class="engine-form-label" for="engine-base-url">Base URL</label>
+                        <input type="text" class="engine-form-control engine-base-url-input" id="engine-base-url" value="">
+                    </div>
+                    <div class="engine-form-group">
+                        <label class="engine-form-label" for="engine-model">Model</label>
+                        <input type="text" class="engine-form-control engine-model-input" id="engine-model" value="">
+                    </div>
+                    
+                    <div class="engine-buttons">
+                        <button class="engine-btn engine-btn-save" id="save-engine-btn-widget">Save/Update</button>
+                        <button class="engine-btn engine-btn-delete" id="delete-engine-btn-widget">Delete</button>
+                        <button class="engine-btn engine-btn-cancel" id="cancel-engine-btn-widget">Cancel</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(window.engineModal);
+            return window.engineModal;
+        }
+
+        function showEngineModal() {
+            getEngineModal().style.display = 'flex';
+        }
+
+        function hideEngineModal() {
+            const modal = document.getElementById('engine-crud-modal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        // Save engine handler
+        async function handleSaveEngine() {
+            const name = document.getElementById('engine-name').value.trim();
+            const base_url = document.getElementById('engine-base-url').value.trim();
+            const model = document.getElementById('engine-model').value.trim();
+
+            if (!name) {
+                alert("Engine name is required.");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/config/engines', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ base_url, model })
+                });
+                const text = await res.text();
+                console.log('API response text:', text);
+                if (!res.ok) {
+                    const errorData = JSON.parse(text);
+                    alert(`Failed to add engine: ${JSON.stringify(errorData) || 'unknown error'}`);
+                    return;
+                }
+                alert(`Engine "${name}" added successfully.`);
+                hideEngineModal();
+            } catch (e) {
+                alert(`Error adding engine: ${e.message}`);
+            }
+        }
+
+        // Delete engine handler
+        async function handleDeleteEngine() {
+            const id = document.getElementById('engine-id').value.trim();
+            if (confirm(`WARNING: Are you sure you want to DELETE the engine with ID: ${id}? This action cannot be undone.`)) {
+                try {
+                    const res = await fetch(`/api/config/engines/${id}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (!res.ok) {
+                        alert(`Failed to delete engine: ${data.detail || 'unknown error'}`);
+                        return;
+                    }
+                    alert(`Engine "${id}" deleted successfully.`);
+                    hideEngineModal();
+                } catch (e) {
+                    alert(`Error deleting engine: ${e.message}`);
+                }
+            }
+        }
+
+        // Wire up buttons
+        document.getElementById('save-engine-btn-widget')?.addEventListener('click', handleSaveEngine);
+        document.getElementById('delete-engine-btn-widget')?.addEventListener('click', handleDeleteEngine);
+        document.getElementById('cancel-engine-btn-widget')?.addEventListener('click', hideEngineModal);
+
+        // Demo buttons
+        document.getElementById('save-engine-btn')?.addEventListener('click', () => {
+            showEngineModal();
+        });
+        document.getElementById('delete-engine-btn')?.addEventListener('click', () => {
+            showEngineModal();
+        });
+        document.getElementById('cancel-engine-btn')?.addEventListener('click', () => {
+            hideEngineModal();
+        });
+
+        // Log when modal is shown/hidden
+        window.addEventListener('load', () => {
+            console.log('Page loaded');
+            console.log('Save button event:', document.getElementById('save-engine-btn-widget')?.addEventListener);
+        });
+    </script>
+</body>
+</html>

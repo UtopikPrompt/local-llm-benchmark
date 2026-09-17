@@ -13,6 +13,8 @@ This directory tracks the major architectural decisions that guided the developm
 | **ADR 0005** | Evaluation Metrics Pipeline and Aggregation Rules | Proposed | Formalizes the mathematical rules for transforming raw execution data into final, reportable metrics. |
 | **ADR 0006** | API Design and Service Boundaries | Proposed | Enforces separation between the HTTP layer (Controller) and the core business logic (Service). |
 | **ADR 0007** | Module Loading and Dependency Graph Management | Proposed | Details the dynamic discovery pattern used to load new benchmarks, tasks, and engines without modifying core startup code. |
+| **ADR 0008** | Engine Management API | Proposed | Establishes the RESTful `/api/engines` contract for the full CRUD lifecycle of engine definitions. |
+| **ADR 0009** | Engine CRUD User Interface | Proposed | Implements the client-side, event-driven engine management workflow in the benchmark view. |
 
 ---
 

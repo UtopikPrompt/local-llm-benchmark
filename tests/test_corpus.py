@@ -130,7 +130,9 @@ def test_load_tasks_empty_tasks_list_raises(tmp_path):
 
 
 def test_load_tasks_duplicate_ids_raises(tmp_path):
-    (tmp_path / "tasks.json").write_text('[{"id": "dup", "prompt": "a", "expected": "e"}, {"id": "dup", "prompt": "b", "expected": "e2"}]')
+    (tmp_path / "tasks.json").write_text(
+        '[{"id": "dup", "prompt": "a", "expected": "e"}, {"id": "dup", "prompt": "b", "expected": "e2"}]'
+    )
     with pytest.raises(ValueError):
         corpus.load_tasks(str(tmp_path / "tasks.json"))
 
@@ -154,7 +156,9 @@ def test_load_tasks_non_string_id_raises(tmp_path):
 
 
 def test_load_tasks_unknown_category_raises(tmp_path):
-    (tmp_path / "tasks.json").write_text('[{"id": "t1", "category": "weird", "prompt": "a", "expected": "e"}]')
+    (tmp_path / "tasks.json").write_text(
+        '[{"id": "t1", "category": "weird", "prompt": "a", "expected": "e"}]'
+    )
     with pytest.raises(ValueError):
         corpus.load_tasks(str(tmp_path / "tasks.json"))
 

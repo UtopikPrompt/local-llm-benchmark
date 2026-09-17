@@ -94,7 +94,7 @@ run                          # Windows (double-click run.bat)
 python -m local_llm_benchmark
 ```
 
-Any flags are forwarded to `python -m local_llm_benchmark` (which defaults to
+any flags are forwarded to `python -m local_llm_benchmark` (which defaults to
 `127.0.0.1:8000` when none are given), for example `--host 0.0.0.0 --port 8000`.
 
 This serves the browser dashboard on <http://127.0.0.1:8000>. Open it and click **Run** to benchmark the running engine.

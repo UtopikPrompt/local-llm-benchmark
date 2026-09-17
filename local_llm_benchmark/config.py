@@ -11,11 +11,9 @@ YAML.
 
 from __future__ import annotations
 
-import json
-import os
+import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
 
 import yaml
 
@@ -51,7 +49,7 @@ class EngineConfig:
         self.max_concurrent = max_concurrent
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "EngineConfig":
+    def from_dict(cls, data: dict[str, any]) -> EngineConfig:
         """Build an :class:`EngineConfig` from a mapping."""
         if not isinstance(data, dict):
             raise ConfigError("engine entry must be a mapping")
@@ -65,21 +63,20 @@ class EngineConfig:
         if not model or not isinstance(model, str):
             raise ConfigError(f"engine '{name}' is missing a 'model'")
         if not _is_absolute_http_url(base_url):
-            raise ConfigError(
-                f"engine '{name}' has an invalid base_url: '{base_url}' "
-                "(must be an absolute http(s) URL)"
-            )
+            raise ConfigError(f"engine '{name}' has an invalid base_url: '{base_url}'")
         timeout = data.get("timeout", 60.0)
         if not isinstance(timeout, (int, float)) or isinstance(timeout, bool) or timeout <= 0:
             raise ConfigError(f"engine '{name}' has an invalid timeout: '{timeout}'")
         max_concurrent = data.get("max_concurrent", 1)
-        if not isinstance(max_concurrent, int) or isinstance(max_concurrent, bool) or max_concurrent < 1:
-            raise ConfigError(
-                f"engine '{name}' has an invalid max_concurrent: '{max_concurrent}'"
-            )
+        if (
+            not isinstance(max_concurrent, int)
+            or isinstance(max_concurrent, bool)
+            or max_concurrent < 1
+        ):
+            raise ConfigError(f"engine '{name}' has an invalid max_concurrent: '{max_concurrent}'")
         return cls(name, base_url, model, timeout=timeout, max_concurrent=max_concurrent)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, any]:
         """Serialize to a plain mapping."""
         return {
             "name": self.name,
@@ -89,7 +86,7 @@ class EngineConfig:
             "max_concurrent": self.max_concurrent,
         }
 
-    def __eq__(self, other: object) -> bool:  # noqa: E501
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, EngineConfig):
             return NotImplemented
         return (
@@ -100,7 +97,7 @@ class EngineConfig:
             and self.max_concurrent == other.max_concurrent
         )
 
-    def __repr__(self) -> str:  # noqa: E501
+    def __repr__(self) -> str:
         return (
             f"EngineConfig(name={self.name!r}, base_url={self.base_url!r}, "
             f"model={self.model!r}, timeout={self.timeout!r}, "
@@ -125,7 +122,7 @@ class JudgeConfig:
         self.timeout = timeout
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "JudgeConfig":
+    def from_dict(cls, data: dict[str, any]) -> JudgeConfig:
         """Build a :class:`JudgeConfig` from a mapping."""
         if not isinstance(data, dict):
             raise ConfigError("judge entry must be a mapping")
@@ -145,7 +142,7 @@ class JudgeConfig:
             raise ConfigError(f"judge '{name}' has an invalid timeout: '{timeout}'")
         return cls(name, base_url, model, timeout=timeout)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, any]:
         """Serialize to a plain mapping."""
         return {
             "name": self.name,
@@ -171,8 +168,8 @@ class BenchmarkConfig:
 
     def __init__(
         self,
-        engines: List[EngineConfig],
-        judges: List[JudgeConfig] | None = None,
+        engines: list[EngineConfig],
+        judges: list[JudgeConfig] | None = None,
         *,
         tasks: str = ".",
         task: str | None = None,
@@ -195,21 +192,39 @@ class BenchmarkConfig:
         self.format = format
         self.output = output
 
+    @property
+    def engines_by_name(self) -> dict[str, EngineConfig]:
+        """Return a mapping of engine name to :class:`EngineConfig`.
+
+        Raises :class:`ConfigError` if two engines share a name (the name is not
+        unique), which is a configuration error.
+        """
+        by_name = {engine.name: engine for engine in self.engines}
+        if len(by_name) != len(self.engines):
+            raise ConfigError(f"duplicate engine names: {self.engines}")
+        return by_name
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "BenchmarkConfig":
+    def from_dict(cls, data: dict[str, any]) -> BenchmarkConfig:
         """Build a :class:`BenchmarkConfig` from a mapping."""
         if not isinstance(data, dict):
             raise ConfigError("configuration root must be a mapping")
         engines_data = data.get("engines")
         if not isinstance(engines_data, list):
             raise ConfigError("'engines' must be a list")
-        engines = [EngineConfig.from_dict(e) for e in engines_data]
+        try:
+            engines = [EngineConfig.from_dict(e) for e in engines_data]
+        except ConfigError as e:
+            raise ConfigError("Error loading engine configuration") from e
         judges_data = data.get("judges")
         judges = []
         if judges_data:
             if not isinstance(judges_data, list):
                 raise ConfigError("'judges' must be a list")
-            judges = [JudgeConfig.from_dict(j) for j in judges_data]
+            try:
+                judges = [JudgeConfig.from_dict(j) for j in judges_data]
+            except ConfigError as e:
+                raise ConfigError("Error loading judge configuration") from e
         return cls(
             engines=engines,
             judges=judges,
@@ -221,7 +236,7 @@ class BenchmarkConfig:
             output=data.get("output"),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, any]:
         """Serialize to a plain mapping."""
         return {
             "engines": [e.to_dict() for e in self.engines],
@@ -260,6 +275,7 @@ class BenchmarkConfig:
 # place so the CLI, the config file and the web dashboard all agree, instead of
 # each hardcoding the same numbers.
 DEFAULT_ENGINE_BASE_URL = "http://localhost:11434"
+DEFAULT_ENGINE_NAME = "ollama"
 DEFAULT_ENGINE_MODEL = "llama3"
 DEFAULT_JUDGE_BASE_URL = "http://localhost:11434"
 DEFAULT_JUDGE_MODEL = "llama3"
@@ -302,9 +318,9 @@ class Defaults:
     task: str | None = None
     output: str = DEFAULT_OUTPUT
     trials: int = DEFAULT_TRIALS
-    engines: List[EngineConfig] = []
+    engines: list[EngineConfig] = []
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, any]:
         """Return the defaults as a plain mapping."""
         return {
             "engine_base_url": self.engine_base_url,
@@ -362,66 +378,211 @@ def _sniff_format(path: Path) -> str:
     return "yaml"
 
 
-def _load_yaml(data: str) -> Dict[str, Any]:
-    """Parse a YAML document into a mapping, raising :class:`ConfigError`."""
-    try:
-        parsed = yaml.safe_load(data)
-    except yaml.YAMLError as exc:
-        raise ConfigError("invalid YAML") from exc
-    if not isinstance(parsed, dict):
-        raise ConfigError("configuration root must be a mapping")
-    return parsed
+def get_db_connection(db_path: str) -> sqlite3.Connection:
+    """Establishes and returns a connection to the SQLite database."""
+    conn = sqlite3.connect(db_path)
+    return conn
 
 
-def _load_json(data: str) -> Dict[str, Any]:
-    """Parse a JSON document into a mapping, raising :class:`ConfigError`."""
-    try:
-        parsed = json.loads(data)
-    except json.JSONDecodeError as exc:
-        raise ConfigError("invalid JSON") from exc
-    if not isinstance(parsed, dict):
-        raise ConfigError("configuration root must be a mapping")
-    return parsed
+def initialize_config_db(db_path: str) -> None:
+    """Ensures the core configuration table exists in the database."""
+    conn = get_db_connection(db_path)
+    cursor = conn.cursor()
+    # Attempt to create the table if it doesn't exist.
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS configuration (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            type TEXT -- e.g., 'engine_config', 'benchmark_setting'
+        );
+    """)
+    conn.commit()
+    conn.close()
 
 
-def load_config(path: str | os.PathLike[str]) -> BenchmarkConfig:
-    """Load a benchmark configuration from *path*.
-
-    The format is sniffed from the file extension (``.json`` → JSON, otherwise
-    YAML). JSON is a subset of YAML, so a JSON file is also valid YAML.
-    """
-    path = Path(path)
-    if not path.exists():
-        raise ConfigError(f"configuration file not found: {path}")
-    format_ = _sniff_format(path)
-    with path.open("r", encoding="utf-8") as handle:
-        raw = handle.read()
-    parser = _load_json if format_ == "json" else _load_yaml
-    data = parser(raw)
-    # ``EngineConfig`` requires an engine to declare a ``model`` (see
-    # ``EngineConfig.from_dict`` and ``test_engine_config_requires_fields``),
-    # but the shipped project ``config.yaml`` leaves it off the engine entries
-    # and relies on the centralized default. Fill the gap before parsing so the
-    # engine list loads instead of raising a 500 on the dashboard and CLI.
-    if "engines" in data and isinstance(data["engines"], list):
-        for engine in data["engines"]:
-            if not engine.get("model"):
-                engine["model"] = Defaults().engine_model
-    return BenchmarkConfig.from_dict(data)
-
-
-# The project configuration file shipped at the repository root. Both the new
-# API layer (:mod:`api.controller`, :mod:`api.services`) and the CLI resolve the
-# active engine configuration to this file when no explicit path is given.
-_DEFAULT_CONFIG_FILE = Path(__file__).resolve().parent.parent / "config.yaml"
+# The project configuration file is no longer read from config.yaml. Configuration is now loaded from the SQLite database.
+# The project configuration file is no longer read from config.yaml. Configuration is now loaded from the SQLite database.
+_DEFAULT_CONFIG_FILE = (
+    Path(__file__).resolve().parent.parent / "config.yaml"
+)  # Legacy reference: SQLite is now the source of truth
 
 _CONFIG_FILE: Path = _DEFAULT_CONFIG_FILE
 
 
 def project_config_path() -> Path:
     """Return the path of the project configuration file.\n\n\nThe default is the repository-root ``config.yaml``. This is a module-level
-value (not configurable at runtime) so every layer that needs to locate the
-project configuration resolves the same file. The :mod:`api` layer passes the
-result through :func:`str` because it joins it into a string comparison.
-"""
+    value (not configurable at runtime) so every layer that needs to locate the
+    project configuration resolves the same file. The :mod:`api` layer passes the
+    result through :func:`str` because it joins it into a string comparison.
+    """
     return _CONFIG_FILE
+
+
+def load_config(db_path: str, root_path: Path) -> BenchmarkConfig:
+    """Loads the entire benchmark configuration from the SQLite database.
+
+    This function treats the SQLite database as the Single Source of Truth (SSOT)
+    for all configuration parameters, completely bypassing file-based loading.
+
+    Args:
+        db_path: Path to the SQLite database file.
+        root_path: The expected root path of the project for context checks.
+
+    Returns:
+        A fully populated :class:`BenchmarkConfig` object.
+
+    Raises:
+        ConfigError: If the database is missing critical configuration data.
+    """
+    try:
+        conn = get_db_connection(db_path)
+        cursor = conn.cursor()
+
+        # 1. Retrieve core benchmark settings
+        cursor.execute("SELECT key, value FROM configuration WHERE type='benchmark_setting'")
+        settings_data = {row[0]: row[1] for row in cursor.fetchall()}
+        conn.close()
+
+        # Map general settings back to the Defaults object
+        defaults = Defaults()
+        try:
+            defaults.engine_base_url = (
+                settings_data.get("engine_base_url") or defaults.engine_base_url
+            )
+            defaults.engine_model = settings_data.get("engine_model") or defaults.engine_model
+            defaults.judge_base_url = settings_data.get("judge_base_url") or defaults.judge_base_url
+            defaults.judge_model = settings_data.get("judge_model") or defaults.judge_model
+            defaults.timeout = float(settings_data.get("timeout", str(defaults.timeout)))
+            defaults.max_concurrent = int(
+                settings_data.get("max_concurrent", str(defaults.max_concurrent))
+            )
+            defaults.format = settings_data.get("format", defaults.format)
+            defaults.tasks = settings_data.get("tasks", defaults.tasks)
+            defaults.task = settings_data.get("task")
+            defaults.output = settings_data.get("output") or defaults.output
+            defaults.trials = int(settings_data.get("trials", str(defaults.trials)))
+        except Exception as e:
+            raise ConfigError(f"Failed to parse core benchmark settings from DB: {e}")
+
+        # 2. Retrieve Engine Configurations
+        cursor = conn = get_db_connection(db_path)
+        cursor.execute("SELECT key, value FROM configuration WHERE type='engine_config'")
+        engine_raw_data = {}
+        for row in cursor.fetchall():
+            key, value = row
+            # Assuming engine name is used as key, and value is JSON string containing full config
+            try:
+                engine_raw_data[key] = yaml.safe_load(value)
+            except yaml.YAMLError as e:
+                raise ConfigError(f"Failed to parse engine config for key {key}: {e}")
+        conn.close()
+
+        engines = [EngineConfig.from_dict(data) for name, data in engine_raw_data.items()]
+
+        # 3. Retrieve Judge Configurations
+        cursor = conn = get_db_connection(db_path)
+        cursor.execute("SELECT key, value FROM configuration WHERE type='judge_config'")
+        judge_raw_data = {}
+        for row in cursor.fetchall():
+            key, value = row
+            # Assuming judge name is used as key, and value is JSON string containing full config
+            try:
+                judge_raw_data[key] = yaml.safe_load(value)
+            except yaml.YAMLError as e:
+                raise ConfigError(f"Failed to parse judge config for key {key}: {e}")
+        conn.close()
+
+        judges = [JudgeConfig.from_dict(data) for name, data in judge_raw_data.items()]
+
+        # 4. Construct and return the final config object
+        # The tasks and output paths are derived from the 'benchmark_setting' step.
+        return BenchmarkConfig(
+            engines=engines,
+            judges=judges,
+            tasks=defaults.tasks,
+            task=defaults.task,
+            max_concurrent=defaults.max_concurrent,
+            timeout=defaults.timeout,
+            format=defaults.format,
+            output=defaults.output,
+        )
+
+    except sqlite3.Error as e:
+        raise ConfigError(f"Database error while loading configuration: {e}") from e
+    finally:
+        # Ensure connection is closed if it was opened
+        if "conn" in locals() and conn:
+            conn.close()
+
+
+# --- API Compatibility Layer for Legacy Tests ---
+
+
+def save_config(config: BenchmarkConfig, db_path: str, root_path: Path) -> None:
+    """
+    DEPRECATED: Saves configuration by writing to the SQLite SSOT.
+
+    This function mimics the old save mechanism, saving the current
+    BenchmarkConfig state to the database instead of a file.
+    """
+    if not config:
+        raise ConfigError("Cannot save a None configuration.")
+
+    conn = get_db_connection(db_path)
+    cursor = conn.cursor()
+
+    try:
+        # Save general benchmark settings
+        settings = {
+            "engine_base_url": config.engines[0].base_url,
+            "engine_model": config.engines[0].model,
+            "judge_base_url": config.judges[0].base_url if config.judges else None,
+            "judge_model": config.judges[0].model if config.judges else None,
+            "timeout": str(config.timeout),
+            "max_concurrent": str(config.max_concurrent),
+            "format": config.format,
+            "tasks": config.tasks,
+            "task": config.task,
+            "output": config.output,
+            "trials": str(config.trials),
+        }
+        for key, value in settings.items():
+            cursor.execute(
+                "INSERT OR REPLACE INTO configuration (key, value, type) VALUES (?, ?, 'benchmark_setting')",
+                (
+                    key,
+                    str(value),
+                ),
+            )
+
+        # Save engines
+        for engine in config.engines:
+            engine_dict = engine.to_dict()
+            yaml_data = yaml.dump(engine_dict)
+            cursor.execute(
+                "INSERT OR REPLACE INTO configuration (key, value, type) VALUES (?, ?, 'engine_config')",
+                (engine.name, yaml_data),
+            )
+
+        # Save judges
+        for judge in config.judges:
+            judge_dict = judge.to_dict()
+            yaml_data = yaml.dump(judge_dict)
+            cursor.execute(
+                "INSERT OR REPLACE INTO configuration (key, value, type) VALUES (?, ?, 'judge_config')",
+                (judge.name, yaml_data),
+            )
+
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def JudgeConfigWrapper(name: str, base_url: str, model: str, timeout: float = 60.0) -> JudgeConfig:
+    """
+    DEPRECATED: Compatibility wrapper for Judge initialization.
+
+    Replaces direct Judge instantiation from the old API, using the modern
+    JudgeConfig structure.
+    """
+    return JudgeConfig(name, base_url, model, timeout=timeout)

@@ -1,7 +1,7 @@
 # Architectural Decision Record (ADR) - API Design and Service Boundaries
 
 **Title:** API Design and Service Boundaries
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-09-14
 **Authors:** AI Assistant
 
@@ -20,6 +20,7 @@ The boundary will be enforced such that:
 2.  The Service Layer's *only* job is **Business Logic Execution**: performing complex tasks, coordinating data, and executing business rules, irrespective of the transport mechanism (HTTP, message queue, etc.).
 3.  All internal components must communicate via strongly typed function calls (interfaces), not by calling each other's private methods.
 
+The persistence and configuration mandates are enforced in [ADR 0001](0001-project-purpose.md) §Invariants.
 ## ⚖️ Considerations / Alternatives Considered
 
 ### Alternative A: Monolithic Controller

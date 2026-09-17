@@ -10,6 +10,133 @@ import { escapeHtml } from './results.js'
 // Module-level: active challenge category filter (null = show all).
 let activeCategory = null
 
+// Reference to the panel-level "Select all challenges" global checkbox
+// (class ``global-select-all``, id ``all-challenges-checkbox``). Mirrors
+// ``models.js`` which renders an equivalent ``#all-models-checkbox``. The
+// global checkbox mirrors the per-card selection: checked => every
+// challenge selected, unchecked => none selected, indeterminate => partial.
+let globalSelectAllCheckbox = null
+
+// --- Per-card checkbox <-> global checkbox sync (mirrors models.js). ------
+// Count a challenge as "selected" when its per-card checkbox is checked.
+function countSelectedChallenges() {
+  const checkboxes = document.querySelectorAll('.challenge-checkboxes .challenge-checkbox')
+  return {
+    total: checkboxes.length,
+    selected: Array.from(checkboxes).filter((cb) => cb.checked).length
+  }
+}
+
+// Reconcile the global "Select all challenges" checkbox with the current
+// per-card selection. Uses the indeterminate pattern (mirrors
+// ``syncSelectAll`` in models.js): indeterminate when some but not all
+// challenges are selected.
+function syncGlobalSelectAll() {
+  if (!globalSelectAllCheckbox) return
+  const { total, selected } = countSelectedChallenges()
+  globalSelectAllCheckbox.indeterminate = total > 0 && selected > 0 && selected < total
+  globalSelectAllCheckbox.checked = total > 0 && selected === total
+}
+
+// Select every currently-unselected challenge. Updates
+// ``state.selectedChallenges`` (an array of task ids).
+function selectAllChallenges() {
+  if (!globalSelectAllCheckbox) return
+  const checkboxes = document.querySelectorAll('.challenge-checkboxes .challenge-checkbox')
+  const ids = Array.from(checkboxes)
+    .filter((cb) => !cb.checked)
+    .map((cb) => cb.getAttribute('data-task'))
+  for (const cb of checkboxes) cb.checked = true
+  updateCheckCounts()
+  state.selectedChallenges = ids
+  syncGlobalSelectAll()
+  updateGlobalLabel()
+}
+
+// Clear every per-card challenge selection. Resets
+// ``state.selectedChallenges`` to an empty array.
+function deselectAllChallenges() {
+  if (!globalSelectAllCheckbox) return
+  const checkboxes = document.querySelectorAll('.challenge-checkboxes .challenge-checkbox')
+  for (const cb of checkboxes) cb.checked = false
+  state.selectedChallenges = []
+  syncGlobalSelectAll()
+  updateGlobalLabel()
+}
+
+// Re-sync the global checkbox purely from ``state.selectedChallenges``.
+// Used when the backend resets the selection (e.g. after a batch run).
+function applySelectedChallengesFromState() {
+  const checkboxes = document.querySelectorAll('.challenge-checkboxes .challenge-checkbox')
+  const selectedIds = new Set(state.selectedChallenges || [])
+  for (const cb of checkboxes) cb.checked = selectedIds.has(cb.getAttribute('data-task'))
+  syncGlobalSelectAll()
+  updateCheckCounts()
+  updateGlobalLabel()
+}
+
+// Toggle the global checkbox: checked => select all, unchecked => clear all.
+function toggleGlobalSelectAll(checkbox) {
+  if (checkbox.checked) selectAllChallenges()
+  else deselectAllChallenges()
+}
+
+// Render the panel-level "Select all challenges" global checkbox above the
+// challenge list. Mirrors ``renderSelectAllCheckbox`` in models.js.
+function renderGlobalSelectAllCheckbox(container) {
+  const checkbox = document.createElement('input')
+  checkbox.type = 'checkbox'
+  checkbox.className = 'global-select-all'
+  checkbox.id = 'all-challenges-checkbox'
+  checkbox.setAttribute('aria-label', 'Select all challenges')
+  checkbox.indeterminate = false
+  checkbox.checked = false
+
+  const label = document.createElement('label')
+  label.className = 'challenge-checkbox-group'
+  label.appendChild(checkbox)
+  const count = document.createElement('span')
+  count.className = 'model-label'
+  label.appendChild(count)
+  container.appendChild(label)
+  globalSelectAllCheckbox = checkbox
+  return label
+}
+
+// Find (or create) the panel container for the panel-level global checkbox.
+// The challenges panel ships an HTML slot ``#all-challenges-checkbox`` in its
+// toolbar; reuse it when present so there is a single source of truth for the
+// global checkbox's id/class, otherwise fall back to a new container above the
+// challenge list.
+function globalSelectAllContainer() {
+  const slot = dom.getEl(document, '#all-challenges-checkbox')
+  if (slot) return slot
+  const listEl = dom.getEl(document, '#challenge-items-list')
+  if (listEl) {
+    const wrapper = document.createElement('div')
+    wrapper.className = 'challenge-global-select-all'
+    wrapper.style.display = 'flex'
+    wrapper.style.justifyContent = 'flex-end'
+    listEl.parentNode.insertBefore(wrapper, listEl)
+    return wrapper
+  }
+  return null
+}
+
+// Recompute the global checkbox label from the current selection count.
+function updateGlobalLabel() {
+  const { total, selected } = countSelectedChallenges()
+  const countEl = globalSelectAllCheckbox ? globalSelectAllCheckbox.closest('.challenge-checkbox-group').querySelector('.model-label') : null
+  if (countEl) countEl.setAttribute('data-count', String(selected))
+}
+
+// Re-render the global checkbox count span after a per-card change.
+function updateGlobalLabelFromState() {
+  const { selected } = countSelectedChallenges()
+  const countEl = globalSelectAllCheckbox ? globalSelectAllCheckbox.closest('.challenge-checkbox-group').querySelector('.model-label') : null
+  if (countEl) countEl.setAttribute('data-count', String(selected))
+}
+
 // Render a single challenge card element for the given task.
 function renderChallengeCard(task) {
   const card = document.createElement('div')
@@ -121,6 +248,7 @@ function applyChallengeFilter() {
     const listEl = dom.getEl(document, '#challenges-list')
     const tasks = state.tasks || []
     listEl.innerHTML = ''
+    syncGlobalSelectAll(globalSelectAllCheckbox)
     if (tasks.length === 0) {
       listEl.innerHTML = '<p class="empty">No tasks found.</p>'
       return
@@ -132,6 +260,7 @@ function applyChallengeFilter() {
   const listEl = dom.getEl(document, '#challenges-list')
   const tasks = (state.tasks || []).filter((t) => t.category === activeCategory)
   listEl.innerHTML = ''
+  syncGlobalSelectAll(globalSelectAllCheckbox)
   if (tasks.length === 0) {
     listEl.innerHTML =
       '<p class="empty">No tasks found in category "' + escapeHtml(activeCategory) + '".</p>'
@@ -178,7 +307,22 @@ async function loadChallenges() {
     chip.addEventListener('click', () => toggleCategoryFilter(category))
     categoriesEl.appendChild(chip)
   }
+  const container = globalSelectAllContainer()
+  if (container) renderGlobalSelectAllCheckbox(container)
   applyChallengeFilter()
 }
 
-export { loadChallenges, toggleCategoryFilter, applyChallengeFilter, renderChallengeCard, perCardStatus }
+export {
+  loadChallenges,
+  toggleCategoryFilter,
+  applyChallengeFilter,
+  renderChallengeCard,
+  perCardStatus,
+  renderGlobalSelectAllCheckbox,
+  syncGlobalSelectAll,
+  toggleGlobalSelectAll,
+  selectAllChallenges,
+  deselectAllChallenges,
+  applySelectedChallengesFromState,
+  countSelectedChallenges,
+}

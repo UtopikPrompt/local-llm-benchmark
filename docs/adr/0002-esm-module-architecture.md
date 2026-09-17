@@ -9,11 +9,7 @@
 
 ## 🎯 1. Context
 
-*The overall goal is to break down the monolithic system into independent, manageable, and testable Service Modules (ESMs).*
-
-The system components (e.g., different benchmarks, tasks, or engines) are currently tightly coupled. Defining clear module boundaries, each following an established "ESM" pattern, is necessary to allow for independent development, testing, and deployment of specific features without affecting the entire system.
-
-## ✨ 2. Decision
+Defining clear module boundaries, each following an established "ESM" pattern, is necessary to allow for independent development, testing, and deployment of specific features without affecting the entire system.
 
 Adopt the "ESM" (Engine/Service Module) pattern. Each functional unit (e.g., a specific engine implementation, a specific benchmark type) must reside in its own isolated module, responsible only for its defined functionality and exposing a stable interface. These modules will interact through defined ports/contracts managed by the central orchestration layer.
 

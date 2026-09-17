@@ -5,8 +5,7 @@ API, so it can itself be benchmarked as an engine under test.
 """
 
 from __future__ import annotations
-
-from typing import Any, AsyncIterator
+, AsyncIterator
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -45,7 +44,7 @@ async def _stream_response(
 async def _forward(
     engine: EngineConfig,
     body: dict,
-) -> Any:
+) -> any:
     """Forward a chat-completions request to the source engine."""
     client = httpx.AsyncClient(timeout=engine.timeout)
     try:
@@ -66,7 +65,7 @@ async def _forward(
         await client.aclose()
 
 
-async def _handle_chat(body: dict) -> Any:
+async def _handle_chat(body: dict) -> any:
     messages = body.get("messages", [])
     stream = body.get("stream", False)
     data = await _forward(_engine, {"messages": messages, "stream": stream})
@@ -75,7 +74,7 @@ async def _handle_chat(body: dict) -> Any:
     return _strip_usage_response(data)
 
 
-async def _handle_models() -> Any:
+async def _handle_models() -> any:
     data = await _forward(_engine, {"stream": False})
     return {"data": [data]}
 
@@ -91,11 +90,11 @@ def install(engine: EngineConfig) -> FastAPI:
     app = FastAPI(title="Local LLM Engine Proxy")
 
     @app.get("/v1/models")
-    async def list_models() -> Any:
+    async def list_models() -> any:
         return await _handle_models()
 
     @app.post("/v1/chat/completions")
-    async def chat_completions(body: dict) -> Any:
+    async def chat_completions(body: dict) -> any:
         return await _handle_chat(body)
 
     return app

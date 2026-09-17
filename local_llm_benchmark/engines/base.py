@@ -26,7 +26,7 @@ class Engine(abc.ABC):
     @abc.abstractmethod
     async def chat(
         self,
-        messages: List[dict],
+        messages: list[dict],
         *,
         max_tokens: int,
         stream: bool = True,
@@ -46,14 +46,14 @@ class Engine(abc.ABC):
     @abc.abstractmethod
     async def chat_completed(
         self,
-        messages: List[dict],
+        messages: list[dict],
         *,
         max_tokens: int,
     ) -> str:
         """Return a single non-streaming completion."""
 
     @abc.abstractmethod
-    async def list_models(self) -> List[str]:
+    async def list_models(self) -> list[str]:
         """Return the list of models served by the engine."""
 
     @abc.abstractmethod

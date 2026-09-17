@@ -1,7 +1,7 @@
 # Architectural Decision Record (ADR) - Global Data Schema and State Contract
 
 **Title:** Global Data Schema and State Contract
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-09-14
 **Authors:** AI Assistant
 
@@ -22,6 +22,8 @@ All core data types will adhere to a single, canonical schema definition. This s
 2.  **Individual Result Row:** The structure for a single recorded test outcome (id, benchmarkId, model, engine, score, latencyMs, passed, etc.).
 3.  **Client State Object:** The structure used by `web/ui/state.js`, ensuring all UI components operate on the same expected data shape.
 
+The persistence (SQLite) and configuration (`config.yaml` deprecation) mandates are enforced in [ADR 0001](0001-project-purpose.md) §Invariants and apply to the persistence layer defined above.
+
 ## ⚖️ Considerations / Alternatives Considered
 
 ### Alternative A: Schema defined only in Database
@@ -41,7 +43,7 @@ All core data types will adhere to a single, canonical schema definition. This s
 * Simplifies debugging by providing a single place to reference the expected payload structure.
 
 ### 🔴 Negative Consequences / Trade-offs
-* Requires discipline. Any change to the schema must be treated as a breaking change and updated across all dependent modules (API, UI, DB).
+* Requires discipline. any change to the schema must be treated as a breaking change and updated across all dependent modules (API, UI, DB).
 
 ## 🔗 Related ADRs
 

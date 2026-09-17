@@ -1,7 +1,7 @@
 # Architectural Decision Record (ADR) - Evaluation Metrics Pipeline and Aggregation Rules
 
 **Title:** Evaluation Metrics Pipeline and Aggregation Rules
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-09-14
 **Authors:** AI Assistant
 
@@ -19,6 +19,8 @@ All raw data processing for final metrics must happen in a dedicated, isolated s
 1.  **Raw Data Ingestion:** Accept the raw list of results (per-task, per-model, per-engine).
 2.  **Metric Calculation:** Apply specific formulas (e.g., average score, weighted score) defined for each metric type.
 3.  **Normalization & Serialization:** Standardize the calculated metrics into the final schema (e.g., rounding scores, converting status flags).
+
+The persistence and configuration mandates are enforced in [ADR 0001](0001-project-purpose.md) §Invariants.
 
 ## ⚖️ Considerations / Alternatives Considered
 

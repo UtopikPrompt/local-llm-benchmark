@@ -31,12 +31,16 @@ def test_engine_config_rejects_non_absolute_url():
 
 def test_engine_config_rejects_protocolless_url():
     with pytest.raises(ValueError):
-        c.EngineConfig.from_dict({"name": "ollama", "base_url": "//localhost:11434", "model": "gemma4:e2b"})
+        c.EngineConfig.from_dict(
+            {"name": "ollama", "base_url": "//localhost:11434", "model": "gemma4:e2b"}
+        )
 
 
 def test_engine_config_rejects_relative_url():
     with pytest.raises(ValueError):
-        c.EngineConfig.from_dict({"name": "ollama", "base_url": "localhost:11434", "model": "gemma4:e2b"})
+        c.EngineConfig.from_dict(
+            {"name": "ollama", "base_url": "localhost:11434", "model": "gemma4:e2b"}
+        )
 
 
 def test_engine_config_accepts_https_url():
@@ -51,36 +55,80 @@ def test_engine_config_constructor_accepts_leading_slash_url():
 
 def test_engine_config_rejects_bool_timeout():
     with pytest.raises(ValueError):
-        c.EngineConfig.from_dict({"name": "ollama", "base_url": "http://localhost:11434", "model": "gemma4:e2b", "timeout": True})
+        c.EngineConfig.from_dict(
+            {
+                "name": "ollama",
+                "base_url": "http://localhost:11434",
+                "model": "gemma4:e2b",
+                "timeout": True,
+            }
+        )
 
 
 def test_engine_config_rejects_zero_timeout():
     with pytest.raises(ValueError):
-        c.EngineConfig.from_dict({"name": "ollama", "base_url": "http://localhost:11434", "model": "gemma4:e2b", "timeout": 0})
+        c.EngineConfig.from_dict(
+            {
+                "name": "ollama",
+                "base_url": "http://localhost:11434",
+                "model": "gemma4:e2b",
+                "timeout": 0,
+            }
+        )
 
 
 def test_engine_config_rejects_negative_timeout():
     with pytest.raises(ValueError):
-        c.EngineConfig.from_dict({"name": "ollama", "base_url": "http://localhost:11434", "model": "gemma4:e2b", "timeout": -5})
+        c.EngineConfig.from_dict(
+            {
+                "name": "ollama",
+                "base_url": "http://localhost:11434",
+                "model": "gemma4:e2b",
+                "timeout": -5,
+            }
+        )
 
 
 def test_engine_config_rejects_bool_max_concurrent():
     with pytest.raises(ValueError):
-        c.EngineConfig.from_dict({"name": "ollama", "base_url": "http://localhost:11434", "model": "gemma4:e2b", "max_concurrent": True})
+        c.EngineConfig.from_dict(
+            {
+                "name": "ollama",
+                "base_url": "http://localhost:11434",
+                "model": "gemma4:e2b",
+                "max_concurrent": True,
+            }
+        )
 
 
 def test_engine_config_rejects_zero_max_concurrent():
     with pytest.raises(ValueError):
-        c.EngineConfig.from_dict({"name": "ollama", "base_url": "http://localhost:11434", "model": "gemma4:e2b", "max_concurrent": 0})
+        c.EngineConfig.from_dict(
+            {
+                "name": "ollama",
+                "base_url": "http://localhost:11434",
+                "model": "gemma4:e2b",
+                "max_concurrent": 0,
+            }
+        )
 
 
 def test_engine_config_rejects_negative_max_concurrent():
     with pytest.raises(ValueError):
-        c.EngineConfig.from_dict({"name": "ollama", "base_url": "http://localhost:11434", "model": "gemma4:e2b", "max_concurrent": -1})
+        c.EngineConfig.from_dict(
+            {
+                "name": "ollama",
+                "base_url": "http://localhost:11434",
+                "model": "gemma4:e2b",
+                "max_concurrent": -1,
+            }
+        )
 
 
 def test_engine_config_from_dict_roundtrip():
-    e = c.EngineConfig("ollama", "http://localhost:11434", "gemma4:e2b", timeout=30.0, max_concurrent=2)
+    e = c.EngineConfig(
+        "ollama", "http://localhost:11434", "gemma4:e2b", timeout=30.0, max_concurrent=2
+    )
     d = e.to_dict()
     assert d == {
         "name": "ollama",
@@ -108,7 +156,14 @@ def test_judge_config_defaults():
 
 def test_judge_config_rejects_bad_timeout():
     with pytest.raises(ValueError):
-        c.JudgeConfig.from_dict({"name": "ollama", "base_url": "http://localhost:11434", "model": "gemma4:e2b", "timeout": -1})
+        c.JudgeConfig.from_dict(
+            {
+                "name": "ollama",
+                "base_url": "http://localhost:11434",
+                "model": "gemma4:e2b",
+                "timeout": -1,
+            }
+        )
 
 
 def test_judge_config_rejects_bad_max_concurrent():
@@ -130,7 +185,9 @@ def test_judge_config_from_dict_roundtrip():
 
 def test_benchmark_config_requires_engine():
     with pytest.raises(ValueError):
-        c.BenchmarkConfig(engines=[], judges=[c.JudgeConfig("ollama", "http://localhost:11434", "gemma4:e2b")])
+        c.BenchmarkConfig(
+            engines=[], judges=[c.JudgeConfig("ollama", "http://localhost:11434", "gemma4:e2b")]
+        )
 
 
 def test_benchmark_config_rejects_duplicate_engine_names():

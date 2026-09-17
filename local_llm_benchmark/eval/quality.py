@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Optional
 
 from local_llm_benchmark.engines.base import Engine
 from local_llm_benchmark.results import Row
@@ -65,9 +64,7 @@ class Judge:
             },
         ]
         tokens = []
-        async for token in self.engine.chat(
-            messages, max_tokens=64, stream=False
-        ):
+        async for token in self.engine.chat(messages, max_tokens=64, stream=False):
             tokens.append(token)
         response = "".join(tokens).strip().lower()
         agreed = "yes" in response
@@ -79,9 +76,9 @@ async def evaluate_quality(
     task: Task,
     answer: str,
     *,
-    expected: Optional[str],
-    validate: Optional[TaskValidator],
-    judge: Optional[Judge] = None,
+    expected: str | None,
+    validate: TaskValidator | None,
+    judge: Judge | None = None,
 ) -> Row:
     """Evaluate *answer* against *task*'s quality checks.
 

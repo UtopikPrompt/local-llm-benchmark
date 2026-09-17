@@ -30,7 +30,7 @@ async def benchmark_speed(
     max_tokens: int = 64,
     trials: int = 3,
     max_concurrent: int = 1,
-) -> List[Row]:
+) -> list[Row]:
     """Benchmark *engine* on *task* over *trials* concurrent requests.
 
     Args:
@@ -45,12 +45,12 @@ async def benchmark_speed(
     """
     prompt = getattr(task, "prompt", "")
     system = getattr(task, "system", None)
-    messages: List[dict] = []
+    messages: list[dict] = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
-    rows: List[Row] = []
+    rows: list[Row] = []
     start = time.perf_counter()
     semaphore = anyio.Semaphore(max_concurrent)
 

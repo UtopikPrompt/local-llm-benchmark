@@ -29,7 +29,10 @@ def _reset_defaults_registry():
     scope restores the registry before and after every test.
     """
     import local_llm_benchmark.config as c
+    from local_llm_benchmark.server.api.controller import _controller
 
-    original = list(c.Defaults.engines)
+    original_engines = list(c.Defaults.engines)
+    original_config_path = _controller._config_path
     yield
-    c.Defaults.engines = original
+    c.Defaults.engines = original_engines
+    _controller._config_path = original_config_path

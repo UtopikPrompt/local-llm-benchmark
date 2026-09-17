@@ -65,16 +65,29 @@ def test_csv_columns_count_matches_row_fields():
 
 def test_csv_columns_order():
     assert list(r.CSV_COLUMNS) == [
-        "engine", "model", "judge", "task_id", "category",
-        "prompt", "expected", "output", "ttft_s", "tok_per_s",
-        "iters_per_s", "quality_passed", "quality_deterministic",
-        "quality_judge", "quality_note",
+        "engine",
+        "model",
+        "judge",
+        "task_id",
+        "category",
+        "prompt",
+        "expected",
+        "output",
+        "ttft_s",
+        "tok_per_s",
+        "iters_per_s",
+        "quality_passed",
+        "quality_deterministic",
+        "quality_judge",
+        "quality_note",
     ]
 
 
 def test_write_csv(tmp_path):
     rows = [
-        r.Row(engine="ollama", model="gemma4:e2b", prompt="q", expected="e", output="o", ttft_s=0.1),
+        r.Row(
+            engine="ollama", model="gemma4:e2b", prompt="q", expected="e", output="o", ttft_s=0.1
+        ),
         r.Row(engine="ollama", model="llama3", prompt="q2", expected="e2", output="o2", ttft_s=0.2),
     ]
     out = tmp_path / "bench.csv"
@@ -105,12 +118,15 @@ def test_write_csv_header_only(tmp_path):
 
 def test_write_json(tmp_path):
     rows = [
-        r.Row(engine="ollama", model="gemma4:e2b", prompt="q", expected="e", output="o", ttft_s=0.1),
+        r.Row(
+            engine="ollama", model="gemma4:e2b", prompt="q", expected="e", output="o", ttft_s=0.1
+        ),
     ]
     out = tmp_path / "bench.json"
     report.write_json(rows, out)
     assert out.exists()
     import json
+
     with out.open() as f:
         data = json.load(f)
     assert isinstance(data, list)
@@ -120,12 +136,15 @@ def test_write_json(tmp_path):
 
 def test_write_report_json(tmp_path):
     rows = [
-        r.Row(engine="ollama", model="gemma4:e2b", prompt="q", expected="e", output="o", ttft_s=0.1),
+        r.Row(
+            engine="ollama", model="gemma4:e2b", prompt="q", expected="e", output="o", ttft_s=0.1
+        ),
     ]
     out = tmp_path / "bench.json"
     report.write_report(rows, out)
     assert out.exists()
     import json
+
     with out.open() as f:
         data = json.load(f)
     assert data[0]["engine"] == "ollama"
@@ -133,7 +152,9 @@ def test_write_report_json(tmp_path):
 
 def test_write_report_csv(tmp_path):
     rows = [
-        r.Row(engine="ollama", model="gemma4:e2b", prompt="q", expected="e", output="o", ttft_s=0.1),
+        r.Row(
+            engine="ollama", model="gemma4:e2b", prompt="q", expected="e", output="o", ttft_s=0.1
+        ),
     ]
     out = tmp_path / "bench.csv"
     report.write_report(rows, out, fmt="csv")
@@ -151,6 +172,7 @@ def test_write_report_dispatch(tmp_path):
     report.write_report(rows, json_out, fmt="json")
     report.write_report(rows, csv_out, fmt="csv")
     import json
+
     assert json_out.exists()
     assert csv_out.exists()
     assert json_out.read_text().strip() != ""
@@ -162,6 +184,7 @@ def test_write_report_default_format_json(tmp_path):
     out = tmp_path / "bench.json"
     report.write_report(rows, out)
     import json
+
     data = json.loads(out.read_text())
     assert data[0]["engine"] == "ollama"
 

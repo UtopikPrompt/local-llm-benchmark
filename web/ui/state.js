@@ -9,6 +9,8 @@
 const state = {
   // Models selected by the user (array of model names).
   selectedModels: [],
+  // Challenges (tasks) selected by the user (array of task ids).
+  selectedChallenges: [],
   // Name of the currently selected engine ('' when none).
   selectedEngine: '',
   // Models selected per engine section: { 'ollama': ['llama3', ...] }.

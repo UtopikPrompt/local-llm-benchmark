@@ -14,7 +14,7 @@ import re
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import yaml
 
@@ -30,7 +30,7 @@ class TaskCategory(str, Enum):
     MATH = "math"
 
     @classmethod
-    def parse(cls, value: Any) -> "TaskCategory":
+    def parse(cls, value: any) -> "TaskCategory":
         """Parse a category from a string or a :class:`TaskCategory`."""
         if isinstance(value, TaskCategory):
             return value
@@ -59,8 +59,8 @@ class Task:
     id: str
     category: TaskCategory
     prompt: str
-    system: Optional[str] = None
-    expected: Optional[str] = None
+    system: str | None = None
+    expected: str | None = None
     validate: Optional[TaskValidator] = None
 
     def __post_init__(self) -> None:
@@ -70,7 +70,7 @@ class Task:
             raise ConfigError(f"task '{self.id}' has an empty prompt")
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any], source: str = "<dict>") -> "Task":
+    def from_dict(cls, data: dict[str, any], source: str = "<dict>") -> "Task":
         """Build a :class:`Task` from a mapping loaded from disk."""
         if not isinstance(data, dict):
             raise ConfigError(f"task in {source} must be a mapping")
@@ -92,9 +92,9 @@ class Task:
             validate=data.get("validate"),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, any]:
         """Serialize to a plain mapping."""
-        data: Dict[str, Any] = {
+        data: dict[str, any] = {
             "id": self.id,
             "category": self.category.value,
             "prompt": self.prompt,
@@ -118,7 +118,7 @@ def _load_task_file(path: Path) -> Task:
     return Task.from_dict(data, source=str(path))
 
 
-def load_tasks(task_dir: str | os.PathLike[str]) -> List[Task]:
+def load_tasks(task_dir: str | os.PathLike[str]) -> list[Task]:
     """Load every task from *task_dir*.
 
     Files ending in ``.json`` are parsed as JSON, everything else as YAML.
@@ -127,7 +127,7 @@ def load_tasks(task_dir: str | os.PathLike[str]) -> List[Task]:
     task_dir = Path(task_dir)
     if not task_dir.is_dir():
         raise ConfigError(f"task directory not found: {task_dir}")
-    tasks: List[Task] = []
+    tasks: list[Task] = []
     for path in sorted(task_dir.glob("*.json")):
         tasks.append(_load_task_file(path))
     for path in sorted(task_dir.glob("*.yaml")):
@@ -139,7 +139,7 @@ def load_tasks(task_dir: str | os.PathLike[str]) -> List[Task]:
     return tasks
 
 
-def task_by_id(tasks: List[Task], task_id: str) -> Task:
+def task_by_id(tasks: list[Task], task_id: str) -> Task:
     """Return the task with *task_id*, raising :class:`ConfigError` if missing."""
     for task in tasks:
         if task.id == task_id:
@@ -174,7 +174,7 @@ _QA_TRAIN = "How far do the rails of a standard train track extend?"
 _MATH_LINEAR = "Solve the equation 2x + 5 = 15 for x."
 _MATH_AREA = "What is the area of a circle with radius 7? Use pi = 3.14159."
 
-_CORPUS: Dict[str, Task] = {
+_CORPUS: dict[str, Task] = {
     "doc-rest-api": Task(
         id="doc-rest-api",
         category=TaskCategory.DOC,
@@ -254,15 +254,15 @@ def _validate_area(area: str) -> bool:
 
 # The corpus ships deterministic validators for the math tasks; the rest rely
 # on substring matching in the runner.
-_DEFAULT_VALIDATORS: Dict[str, TaskValidator] = {
+_DEFAULT_VALIDATORS: dict[str, TaskValidator] = {
     "math-solve-2x-5-15": _validate_solution,
     "math-area-circle-r7": _validate_area,
 }
 
 
-def build_default_corpus() -> List[Task]:
+def build_default_corpus() -> list[Task]:
     """Return the default corpus with deterministic validators attached."""
-    # ``_CORPUS`` is a ``Dict[str, Task]`` of frozen dataclasses, so iterate the
+    # ``_CORPUS`` is a ``dict[str, Task]`` of frozen dataclasses, so iterate the
     # values directly. Each task needing a deterministic validator is replaced
     # with a mutable copy carrying the ``validate`` callable; the shared frozen
     # tasks in ``_CORPUS`` are left untouched.

@@ -1,6 +1,10 @@
 # Base image: recent Python 3.11 (satisfies requires-python = ">=3.10")
 FROM mcr.microsoft.com/devcontainers/python:3.11
 
+RUN apt-get update && apt-get install -y \
+    sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Ensure the non-root `vscode` user (created by the base image) can read
 # the workspace and write to it, and enable shell history.
 COPY --chown=vscode:vscode . /workspace

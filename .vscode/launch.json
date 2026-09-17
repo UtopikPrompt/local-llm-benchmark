@@ -1,37 +1,27 @@
 {
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Debug Dashboard in Editor",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "local_llm_benchmark",
-      "justMyCode": false,
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "autoReload": {
-        "enable": true
-      }
-    },
-    {
-      "name": "Debug Dashboard in Browser",
-      "type": "chrome",
-      "request": "launch",
-      "url": "http://127.0.0.1:8000",
-      "preLaunchTask": "start-server"
-    },
-    {
-      "name": "Debug Dashboard in Edge",
-      "type": "msedge",
-      "request": "launch",
-      "url": "http://127.0.0.1:8000",
-      "preLaunchTask": "start-server"
-    }
-  ],
-  "compounds": [
-    {
-      "name": "UI + Server (Python + Browser)",
-      "configurations": ["Debug Dashboard in Editor", "Debug Dashboard in Browser"]
-    }
-  ]
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Local LLM Backend",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "local_llm_benchmark",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "JS: Chrome Dashboard Frontend",
+            "type": "editor-browser",
+            "request": "launch",
+            "url": "http://localhost:8000",
+            "webRoot": "${workspaceFolder}/web/ui",
+            "sourceMaps": true
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Debug Fullstack (Python + JS)",
+            "configurations": ["Python: Local LLM Backend", "JS: Chrome Dashboard Frontend"]
+        }
+    ]
 }

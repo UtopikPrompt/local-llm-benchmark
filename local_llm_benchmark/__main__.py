@@ -14,7 +14,9 @@ import argparse
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments for the launcher."""
     parser = argparse.ArgumentParser(description="Launch the Local LLM Benchmark dashboard.")
-    parser.add_argument("--host", default="127.0.0.1", help="Interface to bind (default: 127.0.0.1).")
+    parser.add_argument(
+        "--host", default="127.0.0.1", help="Interface to bind (default: 127.0.0.1)."
+    )
     parser.add_argument("--port", type=int, default=8000, help="Port to bind (default: 8000).")
     return parser.parse_args(argv)
 

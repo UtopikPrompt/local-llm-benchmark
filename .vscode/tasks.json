@@ -6,8 +6,8 @@
       "label": "start-server",
       "command": "python -m local_llm_benchmark",
       "isBackground": true,
-      "group": "background",
-      "problemMatcher": "none",
+      "group": "none",
+      "problemMatcher": "$tsc-watch",
       "presentation": {
         "reveal": "never"
       }

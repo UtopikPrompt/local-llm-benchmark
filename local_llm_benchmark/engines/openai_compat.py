@@ -9,7 +9,7 @@ limiting it.
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator, List, Optional
+from typing import AsyncIterator
 
 import httpx
 
@@ -40,7 +40,7 @@ def _strip_content(message: dict) -> str:
     return message.get("content") or message.get("reasoning") or ""
 
 
-def _extract_token(parsed: Any) -> Optional[str]:
+def _extract_token(parsed: any) -> str | None:
     """Extract the next token string from a parsed NDJSON/SSE object.
 
     Handles three shapes:
@@ -59,12 +59,20 @@ def _extract_token(parsed: Any) -> Optional[str]:
         delta = parsed.get("choices", [{}])[0].get("delta") or {}
         if delta.get("content") is not None or delta.get("reasoning") is not None:
             return delta.get("content") or delta.get("reasoning")
-        if (parsed.get("message", {}).get("content") is not None or parsed.get("reasoning") is not None or parsed.get("thinking") is not None):
-            return parsed.get("message", {}).get("content") or parsed.get("reasoning") or parsed.get("thinking")
+        if (
+            parsed.get("message", {}).get("content") is not None
+            or parsed.get("reasoning") is not None
+            or parsed.get("thinking") is not None
+        ):
+            return (
+                parsed.get("message", {}).get("content")
+                or parsed.get("reasoning")
+                or parsed.get("thinking")
+            )
     return None
 
 
-def _stream_tokens(data: dict, stop: Optional[str]) -> AsyncIterator[str]:
+async def _stream_tokens(data: dict, stop: str | None) -> AsyncIterator[str]:
     """Yield tokens from a streaming response (OpenAI SSE or Ollama NDJSON).
 
     ``*data*`` is an iterable of stream items. Each item is either a parsed
@@ -78,7 +86,7 @@ def _stream_tokens(data: dict, stop: Optional[str]) -> AsyncIterator[str]:
         else:  # SSE text line: "data: {...}"
             line = line.strip()
             if line.startswith("data:"):
-                line = line[len("data:"):].strip()
+                line = line[len("data:") :].strip()
                 if line == "[DONE]":
                     continue
                 try:
@@ -103,10 +111,14 @@ class OpenAICompatEngine(Engine):
 
     def __init__(self, engine: EngineConfig) -> None:
         self.config = engine
-        self._client: Optional[httpx.AsyncClient] = None
-        self._model: Optional[str] = None
+        self._client: httpx.AsyncClient | None = None
+        self._model: str | None = None
 
-    async def _aiter_ollama(self, lines: AsyncIterator[str]) -> AsyncIterator[Any]:
+    def to_dict(self) -> dict[str, any]:
+        """Serialize the underlying engine configuration to a mapping."""
+        return self.config.to_dict()
+
+    async def _aiter_ollama(self, lines: AsyncIterator[str]) -> AsyncIterator[any]:
         """Async iterator over Ollama NDJSON stream lines.
 
         Ollama's ``application/x-ndjson`` stream is *not* SSE: each line is a
@@ -138,7 +150,7 @@ class OpenAICompatEngine(Engine):
 
     async def chat(
         self,
-        messages: List[dict],
+        messages: list[dict],
         *,
         max_tokens: int,
         stream: bool = True,
@@ -155,7 +167,7 @@ class OpenAICompatEngine(Engine):
         """
         try:
             client = await self._get_client()
-            payload: dict[str, Any] = {
+            payload: dict[str, any] = {
                 "model": self._model or self.config.model,
                 "messages": messages,
                 "stream": stream,
@@ -179,9 +191,7 @@ class OpenAICompatEngine(Engine):
                 )
                 response.raise_for_status()
                 data = response.json()
-                yield _strip_content(
-                    _strip_usage_response(data.get("response") or data)
-                )
+                yield _strip_content(_strip_usage_response(data.get("response") or data))
         except (httpx.HTTPStatusError, httpx.RequestError, json.JSONDecodeError):
             # Graceful degradation: a missing endpoint or a bad stream must not
             # crash the benchmark. Yield nothing and return normally.
@@ -189,7 +199,7 @@ class OpenAICompatEngine(Engine):
 
     async def chat_completed(
         self,
-        messages: List[dict],
+        messages: list[dict],
         *,
         max_tokens: int,
     ) -> str:
@@ -199,7 +209,7 @@ class OpenAICompatEngine(Engine):
             tokens.append(token)
         return "".join(tokens)
 
-    async def list_models(self) -> List[str]:
+    async def list_models(self) -> list[str]:
         """List models served by the engine.
 
         Graceful degradation: a server missing ``/v1/models`` returns an empty

@@ -35,6 +35,7 @@ class StubEngine(Engine):
 
 def make_task(category="qa"):
     from local_llm_benchmark.tasks import corpus
+
     tasks = corpus.build_default_corpus()
     return tasks[0]
 

@@ -29,7 +29,9 @@ def test_new_engine_from_request_defaults():
 
 
 def test_new_judge_from_request_none():
-    judge = services._new_judge_from_request({"base_url": "http://x", "model": "m"}, services.Defaults())
+    judge = services._new_judge_from_request(
+        {"base_url": "http://x", "model": "m"}, services.Defaults()
+    )
     assert judge is None
 
 
@@ -64,6 +66,7 @@ def test_new_judge_from_request_fallback_to_default_model():
 async def test_run_with_configured_engine(monkeypatch, tmp_path):
     import yaml
     from local_llm_benchmark.benchmarks import speed
+
     row = speed.Row(engine="stub", model="m", task_id="t1", tok_per_s=100.0)
     config = {"engine": "stub"}
 
@@ -86,6 +89,7 @@ async def test_run_with_configured_engine(monkeypatch, tmp_path):
 async def test_run_with_fresh_engine(monkeypatch):
     from local_llm_benchmark.results import Row
     from local_llm_benchmark.benchmarks import speed
+
     row = Row(engine="ollama", model="m", task_id="t1", tok_per_s=100.0)
     config = {"base_url": "http://x", "model": "m"}
 
@@ -115,6 +119,7 @@ async def test_run_missing_base_url_and_model(monkeypatch):
 
 async def test_run_with_judge(monkeypatch):
     from local_llm_benchmark.benchmarks import speed
+
     row = speed.Row(engine="stub", model="m", task_id="t1", tok_per_s=100.0)
 
 
@@ -132,6 +137,7 @@ async def test_engines_empty_when_no_config(tmp_path):
 
 async def test_engines_returns_list(tmp_path):
     import yaml
+
     config_data = {"engines": [{"name": "ollama", "base_url": "http://x", "model": "m"}]}
     path = tmp_path / "config.yaml"
     path.write_text(yaml.safe_dump(config_data))

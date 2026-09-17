@@ -14,20 +14,24 @@ or against a full configuration::
 from __future__ import annotations
 
 import argparse
-from typing import Callable, List, Optional
+from collections.abc import Callable, Sequence
 
 import anyio
 
-from local_llm_benchmark.config import BenchmarkConfig, default_output, EngineConfig, JudgeConfig
+from local_llm_benchmark.config import BenchmarkConfig, EngineConfig, JudgeConfig, default_output
 from local_llm_benchmark.engines.base import Engine
 from local_llm_benchmark.engines.openai_compat import OpenAICompatEngine
 from local_llm_benchmark.eval.quality import Judge, evaluate_quality
-from local_llm_benchmark.results import Row
 from local_llm_benchmark.report import print_summary, write_report
+from local_llm_benchmark.results import Row
 from local_llm_benchmark.tasks.corpus import Task, build_default_corpus, load_tasks, task_by_id
+from local_llm_benchmark.utils.db_manager import DatabaseManager
+
+# Global connection management placeholder (will be initialized in main/run_benchmark)
+DB_MANAGER = DatabaseManager()
 
 
-def _select_tasks(config: BenchmarkConfig) -> List[Task]:
+def _select_tasks(config: BenchmarkConfig) -> list[Task]:
     """Return the list of tasks to run for *config*."""
     if config.tasks == ".":
         tasks = build_default_corpus()
@@ -41,9 +45,9 @@ def _select_tasks(config: BenchmarkConfig) -> List[Task]:
 async def _run_one(
     engine: Engine,
     task: Task,
-    judges: List[Judge],
-    expected: Optional[str],
-    validate: Optional[Callable[[str], bool]],
+    judges: list[Judge],
+    expected: str | None,
+    validate: Callable[[str], bool] | None,
 ) -> Row:
     """Run the speed benchmark on *task* and score the quality of the output."""
     from local_llm_benchmark.benchmarks.speed import benchmark_speed
@@ -77,64 +81,127 @@ async def _run_one(
     return best
 
 
-async def run_benchmark(config: BenchmarkConfig) -> List[Row]:
-    """Run the full benchmark described by *config*.
-
-    For every engine, runs every selected task, measures speed, and scores
-    quality (deterministic checks plus the optional judge). Returns one
-    :class:`Row` per (engine, task) pair.
+async def run_benchmark(config: BenchmarkConfig) -> None:
     """
-    tasks = _select_tasks(config)
-    rows: List[Row] = []
-    # Build concrete :class:`Judge` objects from the judge configurations,
-    # loading each judge engine once and closing it when the run completes.
-    judges: List[Judge] = []
-    judge_engines: List[OpenAICompatEngine] = []
-    engines: List[OpenAICompatEngine] = []
-    try:
-        for engine_config in config.engines:
+    Runs the benchmark for all selected model/challenge combinations,
+    persisting results per-challenge to SQLite.
+
+    Refactored to enforce sequential execution:
+    Model -> Challenge -> Engine -> Task
+    Ensures engines are properly opened and closed for every run.
+    """
+    if not config.selected_models or not config.selected_challenges:
+        print("No models or challenges selected. Skipping benchmark run.")
+        return
+
+    # Clear previous results and initialize DB for the run
+    DB_MANAGER.clear_run_results()
+
+    print(
+        f"""Starting benchmark run for {len(config.selected_models)} models 
+        across {len(config.selected_challenges)} challenges..."""
+    )
+
+    for model in config.selected_models:
+        for task in config.selected_challenges:
+            # Start Engine/Task block for a specific Model/Challenge pair
+            print(f"--- Starting run for Model: {model}, Challenge: {task.id} ---")
+
+            for engine_config in config.engines:
+                engine = OpenAICompatEngine(engine_config)
+                try:
+                    # Now iterate over all tasks belonging to this challenge
+                    tasks_in_challenge = [t for t in config.tasks if t.category == task.category.value]
+                    if not tasks_in_challenge:
+                        print(f"Warning: No tasks found for challenge {task.id} with current configuration.")
+                        continue
+
+                    for task_run in tasks_in_challenge:
+                        # Run the benchmark and score quality for this specific Model/Challenge/Task combination
+                        print(f"  -> Running Task: {task_run.id}")
+                        row = await _run_one(engine, task_run, [], task_run.expected, task_run.validate)
+                        await DB_MANAGER.save_row(row)
+                    
+                    print(f"--- Finished all tasks for Model: {model}, Challenge: {task.id} ---")
+
+                finally:
+                    # Crucial: Ensure the engine is always closed, even on failure
+                    await engine.close()
+
+    print("Benchmark run complete. Results persisted to SQLite.")
+
+
+async def run_per_challenge(
+    config: BenchmarkConfig,
+    challenges: Sequence[str],
+    engines: Sequence[EngineConfig],
+) -> list[Row]:
+    """Run the benchmark one engine at a time, one challenge at a time.
+
+    ``challenges`` are category ids (e.g. ``"qa"``). Each challenge is run fully
+    before the next begins. Within a challenge, engines are run one at a time
+    (sequentially): every task of the challenge is benchmarked against the
+    current engine before the next engine is opened. Each (engine, task) pair
+    produces exactly one :class:`Row`, written to the shared ``rows`` list.
+    """
+    rows: list[Row] = []
+    engine_configs: list[EngineConfig] = list(engines)
+    for category in challenges:
+        tasks = [t for t in config.tasks if t.category == category]
+        if not tasks:
+            continue
+        for engine_config in engine_configs:
             engine = OpenAICompatEngine(engine_config)
-            engines.append(engine)
-            for task in tasks:
-                validate = task.validate if callable(task.validate) else None
-                row = await _run_one(engine, task, judges, task.expected, validate)
-                rows.append(row)
-        # Open judge engines only once all engine tasks have run, so judges
-        # are never opened when there is nothing to score.
-        for judge_config in config.judges:
-            judge_engine = OpenAICompatEngine(judge_config)
-            judge_engines.append(judge_engine)
-            judges.append(Judge(engine=judge_engine, name=judge_config.name))
-    finally:
-        # Always release every engine opened above, including on error.
-        for engine in engines:
-            await engine.close()
-        for judge_engine in judge_engines:
-            await judge_engine.close()
+            try:
+                for task in tasks:
+                    row = await _run_one(engine, task, [], task.expected, task.validate)
+                    rows.append(row)
+            finally:
+                await engine.close()
     return rows
 
 
-def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Benchmark local LLM engines.")
     parser.add_argument("--engine", default="engine", help="Engine name from a config file.")
     parser.add_argument("--base-url", help="Base URL of the OpenAI-compatible engine.")
     parser.add_argument("--model", help="Model served by the engine.")
-    parser.add_argument("--models", action="store_true", help="List models for each engine (config or --base-url) and exit.")
-    parser.add_argument("--list-engines", action="store_true", help="List configured engines (config or --engine/--base-url) and exit.")
+    parser.add_argument(
+        "--models",
+        action="store_true",
+        help="List models for each engine (config or --base-url) and exit.",
+    )
+    parser.add_argument(
+        "--list-engines",
+        action="store_true",
+        help="List configured engines (config or --engine/--base-url) and exit.",
+    )
     parser.add_argument("--judge", help="Judge name from a config file.")
     parser.add_argument("--judge-url", help="Base URL of the judge engine.")
     parser.add_argument("--judge-model", help="Model served by the judge engine.")
     parser.add_argument("--task-dir", default=".", help="Directory of task files.")
     parser.add_argument("--task", help="Run a single task by id.")
     parser.add_argument("--format", choices=["json", "csv"], default="json", help="Output format.")
-    parser.add_argument("--output", default="", help="Path to write the report. Defaults to results/<timestamp>.<format>.")
-    parser.add_argument("--max-concurrent", type=int, default=1, help="Max concurrent requests per task.")
-    parser.add_argument("--timeout", type=float, default=60.0, help="Per-request timeout in seconds.")
+    parser.add_argument(
+        "--output",
+        default="",
+        help="Path to write the report. Defaults to results/<timestamp>.<format>.",
+    )
+    parser.add_argument(
+        "--max-concurrent", type=int, default=1, help="Max concurrent requests per task."
+    )
+    parser.add_argument(
+        "--timeout", type=float, default=60.0, help="Per-request timeout in seconds."
+    )
     parser.add_argument("--config", help="Path to a YAML/JSON config file.")
     parser.add_argument("--trials", type=int, default=3, help="Number of trials per task.")
-    parser.add_argument("--selector", action="store_true", help="Interactively pick a model and exit.")
-    parser.add_argument("--serve", action="store_true", help="Serve the engine as an OpenAI-compatible proxy.")
+    parser.add_argument(
+        "--selector", action="store_true", help="Interactively pick a model and exit."
+    )
+    parser.add_argument(
+        "--serve", action="store_true", help="Serve the engine as an OpenAI-compatible proxy."
+    )
     return parser.parse_args(argv)
 
 
@@ -164,7 +231,12 @@ def _build_config(args: argparse.Namespace) -> BenchmarkConfig:
         raise ValueError("provide --config, or --engine/--base-url/--model")
     if args.judge and args.judge_url and args.judge_model:
         config.judges.append(
-            JudgeConfig(name=args.judge, base_url=args.judge_url, model=args.judge_model, timeout=args.timeout)
+            JudgeConfig(
+                name=args.judge,
+                base_url=args.judge_url,
+                model=args.judge_model,
+                timeout=args.timeout,
+            )
         )
     return config
 
@@ -176,7 +248,7 @@ def _load_config_file(path: str) -> dict:
     return load_config(path).to_dict()
 
 
-def main(argv: Optional[List[str]] = None) -> None:
+def main(argv: list[str] | None = None) -> None:
     """Entry point for ``python -m local_llm_benchmark.runner``."""
     args = _parse_args(argv)
 
@@ -202,16 +274,52 @@ def main(argv: Optional[List[str]] = None) -> None:
         return
 
     config = _build_config(args)
+
+    # Initialize and validate DB connection
+    db_manager = DatabaseManager()
+    if not db_manager.initialize_schema():
+        print("FATAL: Could not initialize database schema. Exiting.")
+        return
+
     rows = anyio.run(run_benchmark, config)
+
+    # Save all collected benchmark rows to the database
+    print("\\n[DB] Saving benchmark results to the database...")
+    saved_count = 0
+    for row in rows:
+        # Convert the Row object to a dictionary suitable for the database manager
+        # Assuming Row has attributes that match the DB schema fields.
+        # If the Row object is a dataclass, accessing attributes directly is safer.
+        result_data = {
+            "run_timestamp": row.run_timestamp,
+            "benchmarkId": row.benchmarkId,
+            "model": row.model,
+            "engine": row.engine,
+            "score": row.score,
+            "latencyMs": row.latencyMs,
+            "passed": row.quality_passed,
+            "scoreStr": row.scoreStr,
+            "latencyStr": row.latencyStr,
+            "status": row.status,
+        }
+        if db_manager.insert_result(result_data):
+            saved_count += 1
+
+    print(f"[DB] Successfully saved {saved_count}/{len(rows)} results to the database.")
+
     write_report(rows, config.output, fmt=config.format)
     print_summary(rows)
+
+    db_manager.close()
 
 
 def _run_selector(args: argparse.Namespace) -> None:
     """Interactively pick a model from the engine and exit."""
     from local_llm_benchmark.engines.openai_compat import OpenAICompatEngine
 
-    engine_obj = OpenAICompatEngine(EngineConfig(name="preview", base_url=args.base_url or "", model=""))
+    engine_obj = OpenAICompatEngine(
+        EngineConfig(name="preview", base_url=args.base_url or "", model="")
+    )
     models = anyio.run(engine_obj.list_models)
     if not models:
         print("No models available.")
@@ -226,7 +334,7 @@ def _list_engines(args: argparse.Namespace) -> None:
     ``--engine``/``--base-url`` pair when no config file is given) and prints
     a header for each one, exactly like the Dashboard's per-engine section.
     """
-    from local_llm_benchmark.engines.openai_compat import OpenAICompatEngine
+    # from local_llm_benchmark.engines.openai_compat import OpenAICompatEngine
 
     engines = _engines_for_listing(args)
     for engine_config in engines:
@@ -265,7 +373,7 @@ def _list_models(args: argparse.Namespace) -> None:
         print()
 
 
-def _engines_for_listing(args: argparse.Namespace) -> List[EngineConfig]:
+def _engines_for_listing(args: argparse.Namespace) -> list[EngineConfig]:
     """Return the list of engines to inspect for --list-engines/--models.
 
     Prefers ``--config`` engines; otherwise synthesises a single engine from
@@ -285,7 +393,7 @@ def _engines_for_listing(args: argparse.Namespace) -> List[EngineConfig]:
     return [EngineConfig(name="engine", base_url="", model="")]
 
 
-async def _list_and_close(engine_obj: OpenAICompatEngine) -> List[str]:
+async def _list_and_close(engine_obj: OpenAICompatEngine) -> list[str]:
     """List models and close the engine within a single event loop.
 
     Both operations must run on the *same* event loop: closing the HTTP client

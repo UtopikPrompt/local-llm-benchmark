@@ -1,7 +1,7 @@
 # Architectural Decision Record (ADR) - Module Loading and Dependency Graph Management
 
 **Title:** Module Loading and Dependency Graph Management
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-09-14
 **Authors:** AI Assistant
 
@@ -15,10 +15,12 @@ The benchmark suite is composed of various independent modules (specific benchma
 
 ## ✨ 2. Decision
 
-The system will adopt a **Plugin/Discovery Pattern** for component loading.
-1.  **Discovery:** The main entry point (`__main__.py`) will utilize Python's import mechanisms (e.g., `importlib` or package scanning) to scan defined component directories (`benchmarks/`, `tasks/`).
+The system will adopt a Plugin/Discovery Pattern for component loading.
+1.  **Discovery:** The main entry point (`__main__.py`) will utilize Python's import mechanisms (e.g., `importlib` or package scanning) to scan defined component directories (`benchmarks/`, `tasks/`, and `engines/`).
 2.  **Initialization:** Instead of importing modules directly, the system will look for a standardized entry point or manifest file within each subdirectory. This manifest will register the component's metadata (name, type, dependencies) and a factory function to instantiate it.
 3.  **Graph Management:** A central Registry/Graph object will maintain the map of discovered components, preventing redundant loading and managing versioning/dependencies between them.
+
+The mandatory persistence (SQLite) and configuration (`config.yaml` deprecation) requirements are enforced in [ADR 0001](0001-project-purpose.md) §Invariants and apply to every discovered module.
 
 ## ⚖️ Considerations / Alternatives Considered
 

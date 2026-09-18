@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Local LLM Backend",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "local_llm_benchmark",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "JS: Chrome Dashboard Frontend",
+            "type": "editor-browser",
+            "request": "launch",
+            "url": "http://localhost:8000",
+            "webRoot": "${workspaceFolder}/src/app/ui",
+            "sourceMaps": true
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Debug Fullstack (Python + JS)",
+            "configurations": ["Python: Local LLM Backend", "JS: Chrome Dashboard Frontend"]
+        }
+    ]
+}

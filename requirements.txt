@@ -1,0 +1,64 @@
+# Requirements for local-llm-benchmark
+# Copy this file to requirements.txt for pip install
+
+[tool.poetry]
+name = "local-llm-benchmark"
+version = "0.1.0"
+description = "Benchmark local LLM engines (Ollama/LM Studio) and visualize results in a browser."
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.poetry.dependencies]
+httpx = ">=0.27"
+anyio = ">=4.4"
+fastapi = ">=0.110"
+uvicorn[standard] = ">=0.27"
+pydantic = ">=2.6"
+PyYAML = ">=6.0"
+sqlalchemy = ">=2.0"
+asyncpg = ">=0.29"
+aiosqlite = ">=0.19"
+orjson = ">=3.9"
+cachetools = ">=5.3"
+prometheus-client = ">=0.19"
+pyjwt = ">=2.8.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.0"
+pytest-asyncio = ">=0.23"
+pytest-asyncio-fixture = ">=0.24.0"
+ruff = ">=0.5"
+ruff-format = ">=0.3.0"
+mypy = ">=1.10"
+pytest-cov = ">=7.1.0"
+coverage = ">=7.16.1"
+vitest = ">=2.0"
+testing-library/jest-dom = ">=6.4.2,<6.5.0"
+jsdom = "^24.0.0"
+playwright = "@latest"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["local_llm_benchmark"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.local_llm_benchmark.frontend]
+build = "build_frontend:build_frontend"
+source = "src/app/ui/app.js"
+outfile = "src/app/ui/main.js"
+format = "esm"
+bundle = true
+static_mount = "/src/app/ui"
+side_effects = false
+minify = true
+minify_whitespace = true
+minify_syntax = true
+minify_identifiers = true
+sourcemap = "inline"
+platform = "browser"

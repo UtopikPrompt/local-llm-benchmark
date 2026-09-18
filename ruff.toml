@@ -1,0 +1,32 @@
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "C4",     # flake8-comprehensions
+    "B",      # flake8-bugbear
+    "UP",     # pyupgrade
+    "S",      # flake8-bandit
+    "PGH",    # pygrep-hooks
+    "RUF",    # ruff-specific
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+    "B009",   # do not call flush()
+    "B904",   # raise without from inside finally
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S105"]  # Allow assert and TODO in tests
+"src/app/ui/*.js" = ["E", "F"]  # Ignore Python rules in JS files

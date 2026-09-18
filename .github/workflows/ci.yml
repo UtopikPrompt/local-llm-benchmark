@@ -1,0 +1,272 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  COVERAGE_THRESHOLD: 80
+  PERFORMANCE_BASLINE_CHECKSUM: "PLACEHOLDER"  # Set after initial baseline run
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: Linting (ruff)
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install ruff
+      
+      - name: Run ruff linting
+        run: ruff check .
+      
+      - name: Run ruff format
+        run: ruff format . --check
+
+  type-check:
+    runs-on: ubuntu-latest
+    name: Type Checking (mypy)
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install mypy
+      
+      - name: Run mypy
+        run: mypy src/ tests/ --ignore-missing-imports
+
+  test-python:
+    runs-on: ubuntu-latest
+    name: Python Tests
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov coverage
+      
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ -v --cov=src --cov-report=xml --cov-report=term-missing --cov-report=html
+      
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(python -c "import coverage; c = coverage.Coverage(); c.load_data(); print(c.report().total_percent)")
+          if (( $(echo "$COVERAGE < $COVERAGE_THRESHOLD" | bc -l) )); then
+            echo "Coverage $COVERAGE% below threshold $COVERAGE_THRESHOLD%"
+            exit 1
+          fi
+          echo "Coverage passed: $COVERAGE% >= $COVERAGE_THRESHOLD%"
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: pytest
+          name: codecov-coverage
+          fail_ci_if_error: false
+      
+      - name: Upload test reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            htmlcov/
+            coverage.xml
+            pytest-results.json
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    name: Frontend Tests
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run frontend tests
+        run: npm test
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-results
+          path: coverage/
+
+  performance-baseline:
+    runs-on: ubuntu-latest
+    name: Performance Baseline
+    needs: test-python
+    outputs:
+      checksum: ${{ steps.checksum.outputs.checksum }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-benchmark
+      
+      - name: Run performance benchmarks
+        run: python benchmarks/run.py
+      
+      - name: Generate baseline checksum
+        id: checksum
+        run: |
+          python -c "
+import hashlib
+import json
+
+# Read benchmark report
+with open('benchmarks/report.json') as f:
+    report = json.load(f)
+
+# Get all metrics for checksum
+metrics = json.dumps(report['metrics'], sort_keys=True)
+checksum = hashlib.sha256(metrics.encode()).hexdigest()
+print(checksum)
+" > $GITHUB_OUTPUT
+
+      - name: Save baseline
+        run: |
+          echo "Baseline created: ${{ steps.checksum.outputs.checksum }}"
+          echo "Performance metrics saved to benchmarks/report.json"
+          echo "\nEngine benchmarks:" | tee .github/baseline.txt
+          python -c "
+import json
+with open('benchmarks/report.json') as f:
+    report = json.load(f)
+for engine in report['engines']:
+    print(f\"  {engine['name']}: {engine.get('latency_ms', 'N/A')}ms, {engine.get('tokens_per_second', 'N/A')} t/s\")
+"
+
+  performance-regression:
+    runs-on: ubuntu-latest
+    name: Performance Regression Check
+    needs: performance-baseline
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-benchmark
+      
+      - name: Run performance benchmarks
+        run: python benchmarks/run.py
+      
+      - name: Compare performance
+        id: compare
+        run: |
+          python -c "
+import hashlib
+import json
+
+# Get current benchmark
+with open('benchmarks/report.json') as f:
+    current = json.load(f)
+
+# Get baseline from saved file
+with open('.github/baseline.txt') as f:
+    baseline_lines = f.read().strip().split('\n')
+    baseline = baseline_lines[0].strip()
+
+# Compare checksums
+current_checksum = hashlib.sha256(json.dumps(current['metrics'], sort_keys=True).encode()).hexdigest()
+
+if current_checksum == baseline:
+    print('Performance: STABLE')
+    status = 'success'
+else:
+    print(f'Performance: REGRESSION DETECTED')
+    print(f'  Baseline: {baseline}')
+    print(f'  Current:  {current_checksum}')
+    status = 'failure'
+    
+    # Log to GitHub
+    with open('.github/workflows/performance.log', 'w') as f:
+        f.write(f'Performance regression detected!\n')
+        f.write(f'Baseline: {baseline}\n')
+        f.write(f'Current:  {current_checksum}\n')
+" > $GITHUB_OUTPUT
+
+      - name: Alert on regression
+        if: steps.compare.outputs.performance == 'REGRESSION DETECTED'
+        run: |
+          echo '🚨 Performance regression detected! Please investigate benchmarks.'
+          echo 'Results logged to .github/workflows/performance.log'
+
+  security-scan:
+    runs-on: ubuntu-latest
+    name: Security Scan
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'filesystem'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'
+
+  summary:
+    runs-on: ubuntu-latest
+    name: CI Summary
+    needs: [lint, type-check, test-python, test-frontend, performance-regression, security-scan]
+    steps:
+      - name: Display summary
+        run: |
+          echo "========================================"
+          echo "CI/CD Pipeline Complete"
+          echo "========================================"
+          echo "Lint:     ${{ needs.lint.result }}"
+          echo "Type Check: ${{ needs.type-check.result }}"
+          echo "Tests:     ${{ needs.test-python.result }}"
+          echo "Frontend:  ${{ needs.test-frontend.result }}"
+          echo "Performance: ${{ needs.performance-regression.result }}"
+          echo "Security:  ${{ needs.security-scan.result }}"
+          echo "========================================"
+          echo "Check coverage: open docs/coverage.html"
+          echo "View benchmarks: open benchmarks/report.html"
+          echo "Baseline:      ${{ needs.performance-regression.env.BASLINE }}"

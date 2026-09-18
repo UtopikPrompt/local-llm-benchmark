@@ -1,0 +1,111 @@
+[project]
+name = "local-llm-benchmark"
+version = "0.1.0"
+description = "Benchmark local LLM engines (Ollama/LM Studio) and visualize results in a browser."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.27",
+    "anyio>=4.4",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "pydantic>=2.6",
+    "PyYAML>=6.0",
+    "sqlalchemy>=2.0",
+    "asyncpg>=0.29",
+    "aiosqlite>=0.19",
+    "orjson>=3.9",
+    "cachetools>=5.3",
+    "prometheus-client>=0.19",
+    "backoff>=2.2.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-asyncio-fixture>=0.24.0",
+    "ruff>=0.5",
+    "ruff-format>=0.3.0",
+    "mypy>=1.10",
+    "pytest-cov>=7.1.0",
+    "coverage>=7.16.1",
+    "vitest",
+    "testing-library/jest-dom@>=6.4.2,<6.5.0",
+    "jsdom@^24.0.0",
+]
+e2e = [
+    "playwright@latest",
+]
+ui = [
+    "uvicorn[standard]>=0.27",
+]
+frontend = [
+    "esbuild>=0.19",
+]
+
+# ---------------------------------------------------------------------------
+# HTTP Client Configuration for LLM Benchmarking
+# ---------------------------------------------------------------------------
+# Pool settings for concurrent LLM calls
+[tool.local_llm_benchmark.http_client]
+max_connections = 100
+keepalive_connections = 50
+timeout = 60.0
+max_retries = 3
+retry_backoff = "exponential"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# ---------------------------------------------------------------------------
+# Frontend build
+# ---------------------------------------------------------------------------
+# The web UI is authored as ES modules in src/app/ui/*.js and bundled into a single
+# ES module by esbuild. See build_frontend.py for the build script.
+[tool.local_llm_benchmark.frontend]
+# esbuild is invoked as a python package (python3 -m esbuild), not as a node
+# binary, so it is listed as a runtime dependency of the build script.
+build = "build_frontend:build_frontend"
+source = "src/app/ui/app.js"
+outfile = "src/app/ui/main.js"
+format = "esm"
+bundle = true
+# FastAPI serves the bundled bundle from this mount point.
+static_mount = "/src/app/ui"
+
+[tool.hatch.build.targets.wheel]
+packages = ["local_llm_benchmark"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.local_llm_benchmark.frontend]
+# Frontend build configuration for esbuild
+build = "build_frontend:build_frontend"
+source = "src/app/ui/app.js"
+outfile = "src/app/ui/main.js"
+format = "esm"
+bundle = true
+# FastAPI serves the bundled bundle from this mount point.
+static_mount = "/src/app/ui"
+# Tree shaking configuration
+side_effects = false
+# Minification settings
+minify = true
+minify_whitespace = true
+minify_syntax = true
+minify_identifiers = true
+# Source maps for debugging
+sourcemap = "inline"
+# Platform and target
+platform = "browser"
+# Chunking configuration (will be extended by esbuild config)
+chunks = ["main", "ui", "api"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["local_llm_benchmark"]
+
+[tool.hatch.metadata]
+allow-direct-references = true

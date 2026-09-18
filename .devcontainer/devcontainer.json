@@ -1,0 +1,24 @@
+// For format help, see: https://aka.ms/devcontainer.json
+{
+  "name": "local-llm-benchmark",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "runArgs": ["--network", "host"],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "Ollama.ollama"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.analysis.autoImportModule": true,
+        "python.languageServer": "Pylance"
+      }
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/postCreateCommand.sh",
+  "forwardPorts": [8000]
+}

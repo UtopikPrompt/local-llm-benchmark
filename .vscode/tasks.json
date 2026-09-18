@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "start-server",
+      "command": "python -m local_llm_benchmark",
+      "isBackground": true,
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "never"
+      }
+    },
+    {
+      "type": "shell",
+      "label": "run-tests",
+      "command": "python -m pytest -q",
+      "dependsOn": ["start-server"]
+    }
+  ]
+}

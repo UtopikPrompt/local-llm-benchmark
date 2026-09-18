@@ -21,14 +21,14 @@ from a completed audit and is meant to be reused for regression checks.
 
 ```
 Audit the frontend UI of the `local-llm-benchmark` project for compliance with its
-Architecture Decision Records (ADRs). Read the UI modules in `web/ui/` and each ADR in
+Architecture Decision Records (ADRs). Read the UI modules in `src/app/ui/` and each ADR in
 `docs/adr/`, then classify every finding into one of: COMPLIANT, PARTIAL, or NON-COMPLIANT,
 plus flag any latent bugs. Report findings as a structured list (see schema below).
 
 Focus areas (map each to its governing ADR):
 
 1. ESM architecture (ADR-0002): detect scattered `window.__*` globals. Look in every
-   `web/ui/*.js` for `window.` writes and count occurrences. A compliant module shares the
+   `src/app/ui/*.js` for `window.` writes and count occurrences. A compliant module shares the
    single global `state` object instead of creating its own globals.
 
 2. Benchmark panel / orchestration (ADR-0003): the engine list must be loaded from the API,

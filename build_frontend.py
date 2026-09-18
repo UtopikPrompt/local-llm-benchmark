@@ -1,13 +1,19 @@
 """Build the dashboard frontend with esbuild.
 
-Bundles the modular ESM entry (``web/ui/main.js``) and its component modules
-into a single ``web/ui/main.js`` served by the FastAPI static mount at ``/web``.
+Bundles the modular ESM entry (``src/app/ui/main.js``) and its component modules
+into a single ``src/app/ui/main.js`` served by the FastAPI static mount at ``/src/app/ui``.
 
 Run directly::
 
     python build_frontend.py
 
 or as a package command (see ``pyproject.toml`` ``[project.scripts]``).
+
+Optimization features:
+- Tree shaking (aggressive dead code elimination)
+- Minification (whitespace, syntax, identifiers)
+- Source maps for debugging
+- Chunk splitting for code splitting
 """
 
 from __future__ import annotations
@@ -37,6 +43,18 @@ def main() -> int:
             "esbuild",
             str(ENTRY),
             "--bundle",
+            # Tree shaking: aggressive dead code elimination
+            "--tree-shaking=true",
+            # Minification options
+            "--minify=true",
+            "--minify-whitespace=true",
+            "--minify-syntax=true",
+            "--minify-identifiers=true",
+            # Source maps for debugging
+            "--sourcemap=inline",
+            # Platform: browser
+            "--platform=browser",
+            # Output format: ES module
             "--format=esm",
             "--outfile=" + str(OUT),
             "--allow-overwrite",

@@ -5,6 +5,10 @@ set -euo pipefail
 # Install the editable package with dev extras (pytest, ruff).
 pip install -e ".[dev]"
 
+# Install frontend dependencies using npm.
+# This installs Vitest and testing libraries for frontend testing.
+npm install
+
 # Configure the editable install to use the workspace `src` as the path so
 # `PYTHONPATH=src python -m local_llm_benchmark.runner` works.
 echo 'export PYTHONPATH=src:$PYTHONPATH' >> ~/.bashrc

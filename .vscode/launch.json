@@ -14,7 +14,7 @@
             "type": "editor-browser",
             "request": "launch",
             "url": "http://localhost:8000",
-            "webRoot": "${workspaceFolder}/web/ui",
+            "webRoot": "${workspaceFolder}/src/app/ui",
             "sourceMaps": true
         }
     ],

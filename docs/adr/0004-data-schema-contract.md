@@ -20,7 +20,7 @@ All core data types will adhere to a single, canonical schema definition. This s
 **Key Schemas to Define:**
 1.  **Benchmark Run State:** Tracks the overall status of a multi-step run.
 2.  **Individual Result Row:** The structure for a single recorded test outcome (id, benchmarkId, model, engine, score, latencyMs, passed, etc.).
-3.  **Client State Object:** The structure used by `web/ui/state.js`, ensuring all UI components operate on the same expected data shape.
+3.  **Client State Object:** The structure used by `src/app/ui/state.js`, ensuring all UI components operate on the same expected data shape.
 
 The persistence (SQLite) and configuration (`config.yaml` deprecation) mandates are enforced in [ADR 0001](0001-project-purpose.md) §Invariants and apply to the persistence layer defined above.
 

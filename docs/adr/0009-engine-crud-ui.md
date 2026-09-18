@@ -11,7 +11,7 @@
 
 Engine definitions (e.g., `openai_compat`, `local_llm`) are central configuration objects. Once ADR-0008 established a RESTful API for their lifecycle, the front-end required a way to expose that API to operators without requiring code changes to add or retire an engine.
 
-The benchmarking web dashboard (`web/ui/views.js`) already renders the set of selectable engines on the benchmark panel. Operators need to be able to add a new engine, edit its metadata, and delete it directly from the UI. Any approach chosen here must respect the ESM module architecture (ADR-0002), the Controller/Service separation (ADR-0006), and the dynamic module discovery pattern (ADR-0007).
+The benchmarking web dashboard (`src/app/ui/views.js`) already renders the set of selectable engines on the benchmark panel. Operators need to be able to add a new engine, edit its metadata, and delete it directly from the UI. Any approach chosen here must respect the ESM module architecture (ADR-0002), the Controller/Service separation (ADR-0006), and the dynamic module discovery pattern (ADR-0007).
 
 ## ✨ Decision
 

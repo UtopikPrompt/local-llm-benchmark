@@ -41,7 +41,7 @@ local_llm_benchmark/
 └── runner.py           # async orchestrator + CLI entrypoint
 ```
 
-The web layer (server + `web/` assets) lives at the repo root next to the package.
+The web layer (server + `src/app/` assets) lives at the repo root next to the package.
 
 ## Installation
 

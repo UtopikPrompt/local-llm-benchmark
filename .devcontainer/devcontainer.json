@@ -1,0 +1,30 @@
+{
+  "name": "local-llm-benchmark",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+        "python.terminal.activateEnvInCurrentTerminal": true,
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "/bin/bash"
+          }
+        },
+        "files.trimTrailingWhitespace": false,
+        "files.insertFinalNewline": true
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-vscode.vscode-typescript-next"
+      ]
+    }
+  },
+  "postCreateCommand": "astro check",
+  "forwardPorts": [4317],
+  "remoteUser": "vscode",
+  "uid": "${localProcessUid}",
+  "gid": "${localProcessGid}"
+}

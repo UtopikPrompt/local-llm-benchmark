@@ -1,0 +1,23 @@
+# Local runtime state — never commit
+
+# Astro UI
+astro/dist/
+astro/types.d.ts
+
+# Interactive benchmark-run result cache (ADR-010)
+benchmark-results/
+*.cache.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# OS / editor
+.DS_Store
+*.swp
+.vscode/
+.idea/

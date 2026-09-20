@@ -27,8 +27,4 @@ RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
 
 COPY . /workspace
 
-# Copy the repo. The Astro UI's own npm install happens later (after node/npm
-# are present) so the image stays lean and the CLI deps are not duplicated.
-COPY . .
-
 CMD /bin/bash

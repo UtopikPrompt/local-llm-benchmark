@@ -1,0 +1,99 @@
+---
+/**
+ * ui/runtime/RunDetail.astro — show a cached run's metadata.
+ *
+ * Displays the raw run metadata (engine, model, benchmark, seed, temperature,
+ * endpoint, examples, tokens, TTFT, throughput). Dimension-weighting is
+ * DEFERRED (ADR-020); this page shows metadata only.
+ */
+import { layout } from "./layouts/Default.astro";
+import { getRun } from "../lib/cache.js";
+
+interface Run {
+  run_id: string;
+  engine: string;
+  model: string;
+  benchmark: string;
+  seed: number;
+  temperature: number;
+  max_tokens: number;
+  created_at: string;
+  endpoint: string;
+  num_examples: number;
+  num_tokens: number;
+  ttft: number;
+  tokens_per_sec: number;
+}
+
+interface Response {
+  run_id: string;
+  engine: string;
+  model: string;
+  benchmark: string;
+  seed: number;
+  temperature: number;
+  max_tokens: number;
+  created_at: string;
+  endpoint: string;
+  num_examples: number;
+  num_tokens: number;
+  ttft: number;
+  tokens_per_sec: number;
+}
+
+const runId = Astro.params.runId;
+const raw = (await getRun(runId)) as unknown as { run: Response };
+const data = raw.run;
+---
+{
+  layout {
+    title = "Run Detail"
+  }
+}
+
+<p><a href="/runtime/">← Back to runs</a></p>
+
+<div class="run-detail">
+  <h2>Run {data.run_id}</h2>
+  <table>
+    <tbody>
+      <tr><th>Engine</th><td>{data.engine}</td></tr>
+      <tr><th>Model</th><td>{data.model}</td></tr>
+      <tr><th>Benchmark</th><td>{data.benchmark}</td></tr>
+      <tr><th>Endpoint</th><td>{data.endpoint}</td></tr>
+      <tr><th>Seed</th><td>{data.seed}</td></tr>
+      <tr><th>Temperature</th><td>{data.temperature}</td></tr>
+      <tr><th>Max Tokens</th><td>{data.max_tokens}</td></tr>
+      <tr><th>Num Examples</th><td>{data.num_examples}</td></tr>
+      <tr><th>Num Tokens</th><td>{data.num_tokens}</td></tr>
+      <tr><th>TTFT (s)</th><td>{data.ttft}</td></tr>
+      <tr><th>Tokens/sec</th><td>{data.tokens_per_sec}</td></tr>
+      <tr><th>Created</th><td>{data.created_at}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .run-detail h2 {
+    margin: 0;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid #d0d0d0;
+    padding: 6px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: #f0f0f0;
+    width: 40%;
+    color: #333;
+  }
+  a {
+    color: #0366d6;
+  }
+</style>

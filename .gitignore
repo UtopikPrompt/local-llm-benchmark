@@ -1,20 +1,33 @@
 # Local runtime state — never commit
 
-# Astro UI
+# Astro UI (output: "server", @astrojs/node standalone adapter)
 astro/dist/
 astro/types.d.ts
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+tsconfig.node.tsbuildinfo
+astro-build/
+
+# Astro standalone build output (npm run build)
+dist/
 
 # Interactive benchmark-run result cache (ADR-010)
 benchmark-results/
 *.cache.json
 
-# Python
+# Python (setuptools/egg layout)
 __pycache__/
 *.py[cod]
+.eggs/
+*.egg-info/
 .venv/
 venv/
 env/
 .pytest_cache/
+
+# Node.js / npm dependencies
+node_modules/
 
 # OS / editor
 .DS_Store

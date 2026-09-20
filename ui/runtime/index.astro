@@ -1,0 +1,106 @@
+---
+/**
+ * ui/runtime/index.astro — list all cached runs.
+ *
+ * Reads cached runs via the JS client (ui/lib/cache.ts), which talks to the
+ * Python bridge (ui/api/cache.py). Shows engine, model, benchmark, temperature,
+ * tokens, TTFT, and throughput per run.
+ */
+import { layout } from "./layouts/Default.astro";
+import { listRuns } from "../lib/cache.js";
+
+interface Run {
+  run_id: string;
+  engine: string;
+  model: string;
+  benchmark: string;
+  seed: number;
+  temperature: number;
+  max_tokens: number;
+  created_at: string;
+  endpoint: string;
+  num_examples: number;
+  num_tokens: number;
+  ttft: number;
+  tokens_per_sec: number;
+}
+
+interface Response {
+  runs: Run[];
+}
+
+const data = (await listRuns()) as unknown as Response;
+const runs = data.runs ?? [];
+---
+{
+  layout {
+    title = "Cached Runs"
+  }
+}
+
+<p class="subtitle">Cached benchmark runs</p>
+
+{#if runs.length === 0}
+  <p class="empty">No cached runs found.</p>
+{:else}
+  <table>
+    <thead>
+      <tr>
+        <th>Run ID</th>
+        <th>Engine</th>
+        <th>Model</th>
+        <th>Benchmark</th>
+        <th>Temperature</th>
+        <th>Examples</th>
+        <th>Tokens</th>
+        <th>TTFT (s)</th>
+        <th>Tok/s</th>
+      </tr>
+    </thead>
+    <tbody>
+      {#each runs as run}
+        <tr>
+          <td><a href="/runtime/run/{run.run_id}">{run.run_id}</a></td>
+          <td>{run.engine}</td>
+          <td>{run.model}</td>
+          <td>{run.benchmark}</td>
+          <td>{run.temperature}</td>
+          <td>{run.num_examples}</td>
+          <td>{run.num_tokens}</td>
+          <td>{run.ttft}</td>
+          <td>{run.tokens_per_sec}</td>
+        </tr>
+      {/each}
+    </tbody>
+  </table>
+{/if}
+
+<style>
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid #d0d0d0;
+    padding: 6px 10px;
+    text-align: left;
+  }
+  th {
+    background: #f0f0f0;
+  }
+  a {
+    color: #0366d6;
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+  .subtitle {
+    color: #555;
+    margin: 0.25rem 0;
+  }
+  .empty {
+    color: #777;
+  }
+</style>

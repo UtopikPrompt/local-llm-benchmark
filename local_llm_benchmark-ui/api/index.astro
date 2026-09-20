@@ -1,0 +1,10 @@
+---
+// Root route - redirects to /runtime
+import { redirect } from "astro:actions";
+
+export async function GET() {
+  redirect("/runtime");
+}
+---
+
+// Redirected by handler above

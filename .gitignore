@@ -28,9 +28,3 @@ env/
 
 # Node.js / npm dependencies
 node_modules/
-
-# OS / editor
-.DS_Store
-*.swp
-.vscode/
-.idea/

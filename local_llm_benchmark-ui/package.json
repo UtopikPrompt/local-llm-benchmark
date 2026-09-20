@@ -1,0 +1,22 @@
+{
+  "name": "local-llm-benchmark",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm run astro -- dev --port 4321",
+    "start": "npm run astro -- preview",
+    "build": "npm run astro -- build",
+    "preview": "npm run astro -- preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "astro": "^5.1.0",
+    "@astrojs/node": "^9.0.0",
+    "@astrojs/react": "^4.4.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1"
+  }
+}

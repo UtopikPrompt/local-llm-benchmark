@@ -1,4 +1,4 @@
-// ui/lib/cache.ts — thin client wrapper around the Python cache bridge.
+// local_llm_benchmark-ui/lib/cache.ts — thin client wrapper around the Python cache bridge.
 //
 // The Python process (see ../api/cache.py) exposes a small JSON API. This
 // module only translates that JSON into the shapes the Astro UI expects.

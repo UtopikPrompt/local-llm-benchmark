@@ -92,39 +92,52 @@ def resolve_benchmark(options: RunOptions) -> str:
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     """Parse CLI arguments."""
     parser = argparse.ArgumentParser(
-        prog="local_llm_benchmark",
+        prog="local-llm-benchmark",
         description="Benchmark the performance and quality of LLM models.",
     )
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument("--version", action="version",
+                        version=f"%(prog)s {__version__}")
 
     sub = parser.add_subparsers(dest="command", required=True)
 
     # list-engines
-    p_engines = sub.add_parser("list-engines", help="List available engines and their dependencies.")
+    p_engines = sub.add_parser(
+        "list-engines", help="List available engines and their dependencies.")
     p_engines.set_defaults(func=list_engines)
 
     # list-benchmarks
-    p_bm = sub.add_parser("list-benchmarks", help="List the bundled benchmark files.")
+    p_bm = sub.add_parser(
+        "list-benchmarks", help="List the bundled benchmark files.")
     p_bm.set_defaults(func=list_benchmarks_cmd)
 
     # run
     p_run = sub.add_parser("run", help="Run a benchmark against an engine.")
-    p_run.add_argument("--benchmark", "-b", default="truthfulqa", help="Bundled benchmark name.")
-    p_run.add_argument("--engine", "-e", default="transformers", help="Engine name.")
-    p_run.add_argument("--model", "-m", default="", help="Model name advertised to the engine.")
-    p_run.add_argument("--seed", "-s", type=int, default=42, help="Sampling seed.")
+    p_run.add_argument("--benchmark", "-b", default="truthfulqa",
+                       help="Bundled benchmark name.")
+    p_run.add_argument(
+        "--engine", "-e", default="transformers", help="Engine name.")
+    p_run.add_argument("--model", "-m", default="",
+                       help="Model name advertised to the engine.")
+    p_run.add_argument("--seed", "-s", type=int,
+                       default=42, help="Sampling seed.")
     p_run.add_argument("--temperature", "-t", type=float, default=0.0)
     p_run.add_argument("--max-tokens", type=int, default=128)
     p_run.add_argument("--endpoint", default="", help="Engine endpoint URL.")
-    p_run.add_argument("--api-key", default="", help="API key (required for remote engines).")
-    p_run.add_argument("--api-base", default="", help="Base URL override (defaults to the engine's default).")
-    p_run.add_argument("--benchmark-file", help="Path to a custom benchmark JSON file.")
-    p_run.add_argument("--stream", action="store_true", help="Stream tokens as they are produced.")
-    p_run.add_argument("--json", action="store_true", help="Emit machine-readable JSON instead of a table.")
+    p_run.add_argument("--api-key", default="",
+                       help="API key (required for remote engines).")
+    p_run.add_argument("--api-base", default="",
+                       help="Base URL override (defaults to the engine's default).")
+    p_run.add_argument("--benchmark-file",
+                       help="Path to a custom benchmark JSON file.")
+    p_run.add_argument("--stream", action="store_true",
+                       help="Stream tokens as they are produced.")
+    p_run.add_argument("--json", action="store_true",
+                       help="Emit machine-readable JSON instead of a table.")
     p_run.set_defaults(func=run_command)
 
     # stream
-    p_stream = sub.add_parser("stream", help="Stream tokens for a single prompt.")
+    p_stream = sub.add_parser(
+        "stream", help="Stream tokens for a single prompt.")
     p_stream.add_argument("--engine", "-e", default="transformers")
     p_stream.add_argument("--model", "-m", default="")
     p_stream.add_argument("--seed", "-s", type=int, default=42)
@@ -137,12 +150,15 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p_stream.set_defaults(func=stream_command)
 
     # list-results
-    p_results = sub.add_parser("list-results", help="List saved benchmark runs.")
-    p_results.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+    p_results = sub.add_parser(
+        "list-results", help="List saved benchmark runs.")
+    p_results.add_argument("--json", action="store_true",
+                           help="Emit machine-readable JSON.")
     p_results.set_defaults(func=list_results_command)
 
     # analyze
-    p_analyze = sub.add_parser("analyze", help="Analyze a saved run with DuckDB.")
+    p_analyze = sub.add_parser(
+        "analyze", help="Analyze a saved run with DuckDB.")
     p_analyze.add_argument("run", help="Run ID to analyze.")
     p_analyze.set_defaults(func=analyze_command)
 
@@ -153,7 +169,8 @@ def get_engine_class_safe(name: str):
     try:
         return get_engine_class(name)
     except ConfigurationError:
-        raise SystemExit(f"error: unknown engine {name!r}. Run `list-engines` for options.")
+        raise SystemExit(
+            f"error: unknown engine {name!r}. Run `list-engines` for options.")
 
 
 def build_engine(name: str, options: RunOptions) -> Engine:
@@ -210,13 +227,15 @@ def run_command(args: argparse.Namespace) -> int:
 
     engine = build_engine(options.engine, options)
     if not engine.capabilities.get("chat") and not engine.capabilities.get("streaming"):
-        raise ConfigurationError(f"engine {options.engine!r} supports neither chat nor streaming")
+        raise ConfigurationError(
+            f"engine {options.engine!r} supports neither chat nor streaming")
 
     cache_dir()
     results_dir = RESULTS_DIR
     run_id = f"{options.engine}:{options.model}@{options.benchmark}/seed{options.seed}/t{options.temperature}/{int(time.time() * 1000)}"
     parquet_path = results_dir / f"{run_id}.parquet"
-    console.print(f"[green]Running[/green] {options.engine} / {options.model or 'any-model'} on {benchmark_path}")
+    console.print(
+        f"[green]Running[/green] {options.engine} / {options.model or 'any-model'} on {benchmark_path}")
 
     run: Optional[BenchmarkRun] = None
     token_count = 0
@@ -251,16 +270,19 @@ def run_command(args: argparse.Namespace) -> int:
                 num_examples=len(prompts),
                 num_tokens=token_count,
                 ttft=ttft,
-                tokens_per_sec=(token_count / (time.time() - start)) if (time.time() - start) else 0.0,
+                tokens_per_sec=(token_count / (time.time() - start)
+                                ) if (time.time() - start) else 0.0,
             )
         else:
             messages = [
                 {"role": "user", "content": prompt},
                 {"role": "assistant", "content": ""},
             ]
-            engine.chat(messages, options.seed, options.temperature, options.max_tokens)
+            engine.chat(messages, options.seed,
+                        options.temperature, options.max_tokens)
             token_count = len(prompts) * options.max_tokens
-            ttft = (token_count / (time.time() - start)) if (time.time() - start) else 0.0
+            ttft = (token_count / (time.time() - start)
+                    ) if (time.time() - start) else 0.0
             run = BenchmarkRun(
                 run_id=run_id,
                 engine=options.engine,
@@ -274,7 +296,8 @@ def run_command(args: argparse.Namespace) -> int:
                 num_examples=len(prompts),
                 num_tokens=token_count,
                 ttft=ttft,
-                tokens_per_sec=(token_count / (time.time() - start)) if (time.time() - start) else 0.0,
+                tokens_per_sec=(token_count / (time.time() - start)
+                                ) if (time.time() - start) else 0.0,
             )
     except BenchmarkError as exc:
         run = None
@@ -328,9 +351,12 @@ def _print_run_summary(run: BenchmarkRun) -> None:
 
 
 def stream_command(args: argparse.Namespace) -> int:
-    engine = build_engine(args.engine, RunOptions(engine=args.engine, model=args.model, seed=args.seed, endpoint=args.endpoint, api_key=args.api_key, api_base=args.api_base))
-    messages = [{"role": "user", "content": args.prompt}, {"role": "assistant", "content": ""}]
-    console.print(f"[green]Streaming[/green] with {args.engine} / {args.model or 'any-model'}")
+    engine = build_engine(args.engine, RunOptions(engine=args.engine, model=args.model,
+                          seed=args.seed, endpoint=args.endpoint, api_key=args.api_key, api_base=args.api_base))
+    messages = [{"role": "user", "content": args.prompt},
+                {"role": "assistant", "content": ""}]
+    console.print(
+        f"[green]Streaming[/green] with {args.engine} / {args.model or 'any-model'}")
     try:
         for token in engine.chat_stream(
             messages,
@@ -387,7 +413,8 @@ def list_results_command(args: argparse.Namespace) -> int:
     results = []
     for run_path in runs:
         data = pq.read_table(run_path).to_pydict()
-        run = BenchmarkRun(**{k: data[k][0] for k in asdict(BenchmarkRun).__fields__})
+        run = BenchmarkRun(**{k: data[k][0]
+                           for k in asdict(BenchmarkRun).__fields__})
         if args.json:
             results.append(asdict(run))
         else:

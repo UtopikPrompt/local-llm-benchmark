@@ -6,7 +6,7 @@ set -euo pipefail
 
 # Install the package with its core dependencies (duckdb, pyarrow, rich)
 # and the `local-llm-benchmark` console-script entry point.
-pip install -e ".[dev, transformers]"
+pip install -e ".[dev, transformers]" --target ./local_llm_benchmark
 
 # Optional LLM engine backends (commented — uncomment to install).
 # Each extras group is defined in pyproject.toml [project.optional-dependencies].
@@ -22,7 +22,7 @@ pip install -e ".[dev, transformers]"
 
 # Install frontend dependencies using npm.
 # This installs Astro and testing libraries for frontend testing.
-npm install --prefix ./ui
+npm install --prefix ./local_llm_benchmark-ui
 
 # Verify the CLI is functional.
 # local-llm-benchmark --help

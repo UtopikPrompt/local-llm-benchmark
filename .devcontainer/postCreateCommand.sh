@@ -1,12 +1,13 @@
 #!/bin/bash
-set -euo pipefail
 
 # Post Create Command hook for the local-llm-benchmark devcontainer.
 # Runs inside the freshly-built Docker container before VS Code launches.
 
 # Install the package with its core dependencies (duckdb, pyarrow, rich)
 # and the `local-llm-benchmark` console-script entry point.
-pip install -e ".[dev, transformers]" --target ./local_llm_benchmark
+echo "Installing backend with core dependencies..."
+pip install --upgrade pip
+pip install -e "./local_llm_benchmark[dev, transformers]" 
 
 # Optional LLM engine backends (commented — uncomment to install).
 # Each extras group is defined in pyproject.toml [project.optional-dependencies].
@@ -22,7 +23,9 @@ pip install -e ".[dev, transformers]" --target ./local_llm_benchmark
 
 # Install frontend dependencies using npm.
 # This installs Astro and testing libraries for frontend testing.
-npm install --prefix ./local_llm_benchmark-ui
+echo "Installing frontend with core dependencies..."
+npm install -g npm@latest
+npm install --prefix=./local_llm_benchmark-ui
 
 # Verify the CLI is functional.
 # local-llm-benchmark --help

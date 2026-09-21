@@ -8,7 +8,7 @@
 echo "Installing backend with core dependencies..."
 sudo chown -R vscode:vscode /home/vscode/.cache/pip
 pip install --upgrade pip
-pip install -e "./local_llm_benchmark[dev, transformers]" 
+pip install -e "./local_llm_benchmark[transformers]" 
 
 # Optional LLM engine backends (commented — uncomment to install).
 # Each extras group is defined in pyproject.toml [project.optional-dependencies].

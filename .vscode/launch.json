@@ -2,23 +2,25 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "JS: Debug with Backend",
+      "name": "Debug Backend (Attach)",
       "type": "node",
       "request": "attach",
       "smartStep": true,
       "autoAttachChildProcesses": true,
-      "outFiles": [
-        "**/*.js",
-        "**/astro.config.mjs",
-        "**/astro.config.cjs"
-      ],
-      "skipFiles": [
-        "**/node_modules/**"
-      ],
-      "port": 9230,
       "preLaunchTask": "Start All Servers",
-      "sourceMaps": true,
-      
+      "sourceMaps": true
+    },
+    {
+      "name": "Open Integrated Browser",
+      "type": "editor-browser",
+      "request": "launch",
+      "url": "http://localhost:4321"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug Full Stack",
+      "configurations": ["Debug Backend (Attach)", "Open Integrated Browser"]
     }
   ]
 }

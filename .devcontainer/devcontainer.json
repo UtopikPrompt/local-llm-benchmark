@@ -24,5 +24,11 @@
   "postCreateCommand": "bash .devcontainer/postCreateCommand.sh",
   "forwardPorts": [
     4317
+  ],
+  "containerEnv": {
+    "PIP_CACHE_DIR": "/home/vscode/.cache/pip"
+  },
+  "mounts": [
+    "source=local-llm-benchmark-pip-cache,target=/home/vscode/.cache/pip,type=volume"
   ]
 }

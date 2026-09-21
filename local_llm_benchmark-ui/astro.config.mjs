@@ -30,4 +30,3 @@ const config = defineConfig({
 });
 
 export default config;
-local-llm-benchmark

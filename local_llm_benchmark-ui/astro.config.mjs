@@ -15,12 +15,9 @@ const config = defineConfig({
       target: "node20",
     },
   }),
-  // Default: use the Rust compiler (@astrojs/compiler-rs). It parses Astro
-  // block markup ({#each}/{#if}) AND frontmatter object-literals like
+  // Astro 7 uses the Rust compiler by default (no longer experimental).
+  // It parses Astro block markup ({#each}/{#if}) AND frontmatter object-literals like
   // `redirect({...})`, which the JS/esbuild fallback parser cannot.
-  experimental: {
-    rustCompiler: true,
-  },
   vite: {
     // Keep the Python cache directory (default: ./cache) out of the build.
     server: {

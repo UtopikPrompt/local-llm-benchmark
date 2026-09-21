@@ -9,11 +9,6 @@
   ],
   "customizations": {
     "vscode": {
-      "settings": {
-        "python.defaultInterpreterPath": "/usr/local/bin/python",
-        "files.trimTrailingWhitespace": false,
-        "files.insertFinalNewline": true
-      },
       "extensions": [
         "ms-python.python",
         "ms-vscode.vscode-typescript-next",

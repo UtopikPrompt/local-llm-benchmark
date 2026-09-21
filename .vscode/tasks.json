@@ -12,7 +12,7 @@
                 "isDefault": true
             },
             "options": {
-                "cwd": "${workspaceFolder}/local_llm_benchmark"
+                "cwd": "${workspaceFolder}"
             },
         },
         {

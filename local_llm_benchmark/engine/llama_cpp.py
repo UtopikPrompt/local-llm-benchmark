@@ -68,7 +68,8 @@ class LlamaCppEngine(OpenAIEngine):
             resp.raise_for_status()
             return ChatResponse(**resp.json())
         except httpx.HTTPStatusError as exc:
-            raise EngineError(f"llama.cpp returned {exc.response.status_code}: {exc}") from exc
+            raise EngineError(
+                f"llama.cpp returned {exc.response.status_code}: {exc}") from exc
 
     def _stream(self, request: ChatRequest) -> Iterator[StreamingToken]:
         headers = {"Content-Type": "application/json"}
@@ -105,6 +106,6 @@ class LlamaCppEngine(OpenAIEngine):
                     content = delta.get("content")
                     if content:
                         yield StreamingToken(token=content)
-                        StreamingToken._previous_timestamp() = 0.0
+                        StreamingToken._previous_timestamp() == 0.0
         except httpx.HTTPStatusError as exc:
             raise EngineError(f"llama.cpp streaming failed: {exc}") from exc

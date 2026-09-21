@@ -6,6 +6,7 @@
 # Install the package with its core dependencies (duckdb, pyarrow, rich)
 # and the `local-llm-benchmark` console-script entry point.
 echo "Installing backend with core dependencies..."
+sudo chown -R vscode:vscode /home/vscode/.cache/pip
 pip install --upgrade pip
 pip install -e "./local_llm_benchmark[dev, transformers]" 
 
@@ -24,7 +25,7 @@ pip install -e "./local_llm_benchmark[dev, transformers]"
 # Install frontend dependencies using npm.
 # This installs Astro and testing libraries for frontend testing.
 echo "Installing frontend with core dependencies..."
-npm install -g npm@latest
+npm install npm@latest
 npm install --prefix=./local_llm_benchmark-ui
 
 # Verify the CLI is functional.

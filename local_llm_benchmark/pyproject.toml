@@ -3,7 +3,7 @@ requires = ["setuptools>=75.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "local-llm-benchmark"
+name = "local_llm_benchmark"
 version = "0.1.0"
 description = "Benchmark local LLM engines on quality metrics (accuracy, groundedness, and judge-based dimensions)."
 readme = "README.md"

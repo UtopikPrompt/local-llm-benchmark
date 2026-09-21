@@ -2,45 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Run CLI (subprocess)",
-      "type": "debugpy",
-      "request": "launch",
-      "subProcess": true,
-      "program": "${workspaceFolder}/local_llm_benchmark/cli.py",
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "name": "Python: Attach to CLI (breakpoint)",
-      "type": "debugpy",
-      "request": "attach",
-      "connect": {
-        "host": "localhost",
-        "port": 5678
-      },
-      "preLaunchTask": "default"
-    },
-    {
-      "name": "Python: Reconnect to CLI",
-      "type": "debugpy",
-      "request": "launch",
-      "subProcess": true,
-      "program": "${workspaceFolder}/local_llm_benchmark/cli.py",
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "name": "JS: Run Astro Dev Server",
-      "type": "node-terminal",
-      "request": "launch",
-      "command": "npm run dev -- --host 0.0.0.0 --port 4321",
-      "cwd": "${workspaceFolder}/local_llm_benchmark-ui",
-      "serverReadyAction": {
-        "action": "openIntegratedBrowser",
-        "pattern": "Local\\s+(https?://[^\\s]+)",
-        "uriFormat": "%s"
-      }
-    },
-    {
-      "name": "JS: Attach to Astro Dev Server",
+      "name": "JS: Debug with Backend",
       "type": "node",
       "request": "attach",
       "smartStep": true,
@@ -52,7 +14,11 @@
       ],
       "skipFiles": [
         "**/node_modules/**"
-      ]
+      ],
+      "port": 9230,
+      "preLaunchTask": "Start All Servers",
+      "sourceMaps": true,
+      
     }
   ]
 }

@@ -1,0 +1,41 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Python Backend",
+            "type": "shell",
+            "command": "python -m local_llm_benchmark",
+            "isBackground": true,
+            "problemMatcher": "$python",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "options": {
+                "cwd": "${workspaceFolder}/local_llm_benchmark"
+            },
+        },
+        {
+            "label": "JavaScript Frontend",
+            "type": "shell",
+            "command": "npm run dev",
+            "isBackground": true,
+            "problemMatcher": "$tsc",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "options": {
+                "cwd": "${workspaceFolder}/local_llm_benchmark-ui"
+            }
+        },
+        {
+            "label": "Start All Servers",
+            "dependsOn": [
+                "Python Backend",
+                "JavaScript Frontend"
+            ],
+            "dependsOrder": "sequence"
+        }
+    ]
+}

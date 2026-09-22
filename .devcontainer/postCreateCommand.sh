@@ -25,6 +25,7 @@ pip install -e "./local_llm_benchmark[transformers]"
 # Install frontend dependencies using npm.
 # This installs Astro and testing libraries for frontend testing.
 echo "Installing frontend with core dependencies..."
+cd ./local_llm_benchmark-ui
 npm install npm@latest
 npm install --prefix=./local_llm_benchmark-ui
 

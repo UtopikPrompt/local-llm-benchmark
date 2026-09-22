@@ -371,7 +371,7 @@ def stream_command(args: argparse.Namespace) -> int:
     return 0
 
 
-def list_engines() -> int:
+def list_engines(args: argparse.Namespace) -> int:
     table = Table(title="Available engines")
     table.add_column("Name")
     table.add_column("Description")

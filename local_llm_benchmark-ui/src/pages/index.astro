@@ -1,74 +1,130 @@
 <script>
-import { listRuns, getScores } from '../lib/cache.js';
-import DefaultLayout from '../layouts/Default.astro';
+  import DefaultLayout from "../layouts/Default.astro";
 
-export interface Runs {
-  id: string;
-  model: string;
-  prompt: string;
-  completion: string;
-  qualityScores: QualityScores;
-  createdAt: string;
-}
+  export interface Runs {
+    id: string;
+    model: string;
+    prompt: string;
+    completion: string;
+    qualityScores: QualityScores;
+    createdAt: string;
+  }
 
-export interface QualityScores {
-  accuracy: number;
-  faithfulness: number;
-  groundedness: number;
-  instructionFollowing: number;
-  reasoning: number;
-  relevance: number;
-  helpfulness: number;
-  honesty: number;
-  harmlessness: number;
-}
+  export interface QualityScores {
+    accuracy: number;
+    faithfulness: number;
+    groundedness: number;
+    instructionFollowing: number;
+    reasoning: number;
+    relevance: number;
+    helpfulness: number;
+    honesty: number;
+    harmlessness: number;
+  }
 
-let runs: Runs[] = [];
-let qualityScores: Map<string, QualityScores> = new Map();
+  let runs: Runs[] = [];
+  let qualityScores: Map<string, QualityScores> = new Map();
 
-let cachedRuns = false;
+  let cachedRuns = false;
 
-async function fetchRuns() {
-  if (cachedRuns) return;
-  
-  const allRuns = await listRuns();
-  runs = allRuns;
-  cachedRuns = true;
-}
+  async function fetchRuns() {
+    if (cachedRuns) return;
 
-async function fetchScores() {
-  if (qualityScores.size > 0) return;
-  
-  const scoredRuns = await getScores();
-  scoredRuns.forEach((run) => qualityScores.set(run.id, run.scores));
-}
+    try {
+      const allRuns = await fetchRuns();
+      runs = allRuns.map((run) => ({
+        id: run.run_id,
+        model: run.model,
+        prompt: run.prompt,
+        completion: run.completion,
+        qualityScores: run.scores,
+        createdAt: run.created_at,
+      }));
+      cachedRuns = true;
+    } catch (error) {
+      console.error("fetchRuns error:", error);
+      runs = [];
+      cachedRuns = true;
+    }
+  }
 
-function getRunWithScores(run: Runs): Runs {
-  const scores = qualityScores.get(run.id) || { accuracy: 0, faithfulness: 0, groundedness: 0, instructionFollowing: 0, reasoning: 0, relevance: 0, helpfulness: 0, honesty: 0, harmlessness: 0 };
-  return { ...run, qualityScores: scores };
-}
+  async function fetchScores() {
+    if (qualityScores.size > 0) return;
 
-function formatScore(score: number): string {
-  return `${(score * 100).toFixed(1)}%`;
-}
+    try {
+      const scoredRuns = await getScores();
+      scoredRuns.forEach((run) => qualityScores.set(run.id, run.scores));
+    } catch (error) {
+      console.error("getScores error:", error);
+    }
+  }
 
-async function handleRefresh() {
-  await fetchRuns();
-  await fetchScores();
-}
+  function getRunWithScores(run: Runs): Runs {
+    const scores = qualityScores.get(run.id) || {
+      accuracy: 0,
+      faithfulness: 0,
+      groundedness: 0,
+      instructionFollowing: 0,
+      reasoning: 0,
+      relevance: 0,
+      helpfulness: 0,
+      honesty: 0,
+      harmlessness: 0,
+    };
+    return { ...run, qualityScores: scores };
+  }
 
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleString();
-}
+  function formatScore(score: number): string {
+    return `${(score * 100).toFixed(1)}%`;
+  }
 
-function averageScore(scores: QualityScores): number {
-  const total = Object.values(scores).reduce((sum, s) => sum + s, 0);
-  return total / Object.keys(scores).length;
-}
+  async function handleRefresh() {
+    await fetchRuns();
+    await fetchScores();
+  }
 
-let html = '';
+  function formatDate(dateString: string): string {
+    return new Date(dateString).toLocaleString();
+  }
 
-html = `<html lang="en">
+  function averageScore(scores: QualityScores): number {
+    const total = Object.values(scores).reduce((sum, s) => sum + s, 0);
+    return total / Object.keys(scores).length;
+  }
+
+  async function fetchRunsImpl() {
+    try {
+      const runs = await fetchRuns();
+      return runs.map((run) => ({
+        run_id: run.run_id,
+        model: run.model,
+        prompt: run.prompt,
+        completion: run.completion,
+        scores: run.scores,
+        created_at: run.created_at,
+      }));
+    } catch (error) {
+      console.error("fetchRunsImpl error:", error);
+      return [];
+    }
+  }
+
+  async function getScoresImpl() {
+    try {
+      const scores = await getScores();
+      return scores.map((score) => ({
+        id: score.id,
+        scores: score.scores,
+      }));
+    } catch (error) {
+      console.error("getScoresImpl error:", error);
+      return [];
+    }
+  }
+
+  let html = "";
+
+  html = `<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -334,29 +390,30 @@ html = `<html lang="en">
 </body>
 </html>`;
 
-fetchRuns();
-fetchScores();
+  fetchRuns();
+  fetchScores();
 
-function renderRuns() {
-  const container = document.getElementById('runs-container');
-  if (!container) return;
-  
-  if (runs.length === 0) {
-    container.innerHTML = `
+  function renderRuns() {
+    const container = document.getElementById("runs-container");
+    if (!container) return;
+
+    if (runs.length === 0) {
+      container.innerHTML = `
       <div class="no-runs">
         <h3>No cached runs yet</h3>
         <p>Runs will appear here once benchmark tests complete.</p>
         <button id="trigger-refresh">🔄 Trigger Refresh</button>
       </div>
     `;
-    return;
-  }
-  
-  container.innerHTML = runs.map((run) => {
-    const scores = getRunWithScores(run).qualityScores;
-    const avgScore = averageScore(scores);
-    
-    return `
+      return;
+    }
+
+    container.innerHTML = runs
+      .map((run) => {
+        const scores = getRunWithScores(run).qualityScores;
+        const avgScore = averageScore(scores);
+
+        return `
       <article class="run-card">
         <div class="run-header">
           <h2 class="run-title">${run.model}</h2>
@@ -367,8 +424,8 @@ function renderRuns() {
           <span>📊 Avg: ${formatScore(avgScore)}</span>
         </div>
         <div class="run-content">
-          <p><strong>Prompt:</strong> ${run.prompt.replace(/\n/g, ' ')}</p>
-          <p><strong>Completion:</strong> ${run.completion.replace(/\n/g, ' ')}</p>
+          <p><strong>Prompt:</strong> ${run.prompt.replace(/\n/g, " ")}</p>
+          <p><strong>Completion:</strong> ${run.completion.replace(/\n/g, " ")}</p>
         </div>
         <div class="run-footer">
           <div class="score-grid">
@@ -421,13 +478,20 @@ function renderRuns() {
         </div>
       </article>
     `;
-  }).join('');
-}
+      })
+      .join("");
+  }
 
-document.getElementById('refresh')?.addEventListener('click', handleRefresh);
-document.getElementById('trigger-refresh')?.addEventListener('click', handleRefresh);
+  document.getElementById("refresh")?.addEventListener("click", handleRefresh);
+  document
+    .getElementById("trigger-refresh")
+    ?.addEventListener("click", handleRefresh);
 
-const observer = new MutationObserver(renderRuns);
-observer.observe(document.getElementById('runs-container'), { childList: true, subtree: true });
+  const observer = new MutationObserver(renderRuns);
+  observer.observe(document.getElementById("runs-container"), {
+    childList: true,
+    subtree: true,
+  });
 
-renderRuns();
+  renderRuns();
+</script>

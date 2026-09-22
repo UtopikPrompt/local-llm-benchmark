@@ -12,7 +12,8 @@
       "extensions": [
         "ms-python.python",
         "ms-vscode.vscode-typescript-next",
-        "Ollama.ollama"
+        "Ollama.ollama",
+        "astro-build.astro-vscode"
       ]
     }
   },

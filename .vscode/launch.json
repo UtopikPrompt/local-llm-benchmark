@@ -7,20 +7,26 @@
       "request": "attach",
       "smartStep": true,
       "autoAttachChildProcesses": true,
-      "preLaunchTask": "Start All Servers",
+      "preLaunchTask": "Python Backend",
       "sourceMaps": true
     },
     {
-      "name": "Open Integrated Browser",
+      "name": "Debug Frontend (Launch)",
       "type": "editor-browser",
       "request": "launch",
-      "url": "http://localhost:4321"
+      "smartStep": true,
+      "url": "http://localhost:4321",
+      "preLaunchTask": "JavaScript Frontend",
+      "sourceMaps": true
     }
   ],
   "compounds": [
     {
       "name": "Debug Full Stack",
-      "configurations": ["Debug Backend (Attach)", "Open Integrated Browser"]
+      "configurations": [
+        "Debug Backend (Attach)",
+        "Debug Frontend (Launch)"
+      ]
     }
   ]
 }

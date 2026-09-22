@@ -1,13 +1,17 @@
-{"message":"Enabling sessions with filesystem storage","label":"@astrojs/node","level":"info"}
 {"message":"Missing pages directory: src/pages","label":null,"level":"warn"}
 {"message":"connected.","label":"vite","level":"info"}
 {"message":"Generated 0ms","label":"types","level":"info"}
+{"message":"Port 4321 is in use, trying another one...","label":"vite","level":"info"}
 {"message":"connected.","label":"vite","level":"info"}
-{"message":" astro  v7.3.3 ready in 262 ms\n┃ Local    http://localhost:4321/\n┃ Network  http://192.168.1.130:4321/","label":"SKIP_FORMAT","level":"info"}
+{"message":" astro  v7.3.3 ready in 171 ms\n┃ Local    http://localhost:4322/\n┃ Network  use --host to expose","label":"SKIP_FORMAT","level":"info"}
 {"message":"watching for file changes...","label":null,"level":"info"}
-{"message":"Configuration file updated. Restarting...","label":null,"level":"info"}
-{"message":"Enabling sessions with filesystem storage","label":"@astrojs/node","level":"info"}
+{"message":"Configuration file removed. Restarting...","label":null,"level":"info"}
 {"message":"Missing pages directory: src/pages","label":null,"level":"warn"}
 {"message":"connected.","label":"vite","level":"info"}
 {"message":"connected.","label":"vite","level":"info"}
+{"message":"Failed to resolve dependency: astro > aria-query, present in client 'optimizeDeps.include'","label":"vite","level":"warn"}
+{"message":"Failed to resolve dependency: astro > axobject-query, present in client 'optimizeDeps.include'","label":"vite","level":"warn"}
+{"message":"Failed to resolve dependency: astro > html-escaper, present in client 'optimizeDeps.include'","label":"vite","level":"warn"}
+{"message":"Failed to resolve dependency: astro/runtime/client/dev-toolbar/entrypoint.js, present in client 'optimizeDeps.include'","label":"vite","level":"warn"}
 {"message":"server restarted.","label":"vite","level":"info"}
+{"message":"Failed to create the dev server app: Failed to load url virtual:astro:server-app (resolved id: /workspaces/local-llm-benchmark/node_modules/astro/dist/vite-plugin-app/createAstroServerApp.js). Does the file exist?","label":null,"level":"error"}

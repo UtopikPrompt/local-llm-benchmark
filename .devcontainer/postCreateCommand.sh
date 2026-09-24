@@ -27,7 +27,7 @@ pip install -e "./local_llm_benchmark[transformers]"
 echo "Installing frontend with core dependencies..."
 cd ./local_llm_benchmark-ui
 npm install npm@latest
-npm install --prefix=./local_llm_benchmark-ui
+npm install
 
 # Verify the CLI is functional.
 # local-llm-benchmark --help

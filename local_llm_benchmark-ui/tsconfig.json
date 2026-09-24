@@ -1,0 +1,13 @@
+{
+    "extends": "astro/tsconfigs/strict",
+    "include": [
+        "src/**/*",
+        "astro.config.mjs"
+    ],
+    "compilerOptions": {
+        "allowJs": true,
+        "checkJs": false,
+        "isolatedModules": true,
+        "moduleResolution": "node16"
+    }
+}

@@ -1,4 +1,5 @@
 <script>
+  import { getScores } from "../bridge";
   import DefaultLayout from "../layouts/Default.astro";
 
   export interface Runs {
@@ -27,33 +28,12 @@
 
   let cachedRuns = false;
 
-  async function fetchRuns() {
-    if (cachedRuns) return;
-
-    try {
-      const allRuns = await fetchRuns();
-      runs = allRuns.map((run) => ({
-        id: run.run_id,
-        model: run.model,
-        prompt: run.prompt,
-        completion: run.completion,
-        qualityScores: run.scores,
-        createdAt: run.created_at,
-      }));
-      cachedRuns = true;
-    } catch (error) {
-      console.error("fetchRuns error:", error);
-      runs = [];
-      cachedRuns = true;
-    }
-  }
-
   async function fetchScores() {
     if (qualityScores.size > 0) return;
 
     try {
       const scoredRuns = await getScores();
-      scoredRuns.forEach((run) => qualityScores.set(run.id, run.scores));
+      scoredRuns.forEach((run: Runs) => qualityScores.set(run.id, run.scores));
     } catch (error) {
       console.error("getScores error:", error);
     }
@@ -95,13 +75,13 @@
   async function fetchRunsImpl() {
     try {
       const runs = await fetchRuns();
-      return runs.map((run) => ({
-        run_id: run.run_id,
+      return runs.map((run: Runs) => ({
+        run_id: run.id,
         model: run.model,
         prompt: run.prompt,
         completion: run.completion,
-        scores: run.scores,
-        created_at: run.created_at,
+        scores: run.qualityScores,
+        created_at: run.createdAt,
       }));
     } catch (error) {
       console.error("fetchRunsImpl error:", error);
@@ -109,10 +89,18 @@
     }
   }
 
-  async function getScoresImpl() {
+  async function fetchRuns(): Promise<Runs[]> {
+    return fetchRunsImpl();
+  }
+
+  async function getScores(): Promise<QualityScores[]> {
+    return getScoresImpl();
+  }
+
+  async function getScoresImpl(): Promise<QualityScores[]> {
     try {
       const scores = await getScores();
-      return scores.map((score) => ({
+      return scores.map((score: { id: string; scores: QualityScores }) => ({
         id: score.id,
         scores: score.scores,
       }));
@@ -488,10 +476,13 @@
     ?.addEventListener("click", handleRefresh);
 
   const observer = new MutationObserver(renderRuns);
-  observer.observe(document.getElementById("runs-container"), {
-    childList: true,
-    subtree: true,
-  });
+  const runsContainer = document.getElementById("runs-container");
+  if (runsContainer) {
+    observer.observe(runsContainer, {
+      childList: true,
+      subtree: true,
+    });
+  }
 
   renderRuns();
 </script>

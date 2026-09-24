@@ -413,8 +413,27 @@ def list_results_command(args: argparse.Namespace) -> int:
     results = []
     for run_path in runs:
         data = pq.read_table(run_path).to_pydict()
+        # Updated: Include all known fields, including scores, to ensure consistency with frontend expectations.
         run = BenchmarkRun(**{k: data[k][0]
                            for k in asdict(BenchmarkRun).__fields__})
+
+        # Aggregate scores from the underlying data structure for the JSON output
+        # We assume the scores map to the QualityScores structure expected by the frontend.
+        scores_data = {
+            "accuracy": data.get('accuracy', [0])[0],
+            "faithfulness": data.get('faithfulness', [0])[0],
+            "groundedness": data.get('groundedness', [0])[0],
+            "instructionFollowing": data.get('instructionFollowing', [0])[0],
+            "reasoning": data.get('reasoning', [0])[0],
+            "relevance": data.get('relevance', [0])[0],
+            "helpfulness": data.get('helpfulness', [0])[0],
+            "honesty": data.get('honesty', [0])[0],
+            "harmlessness": data.get('harmlessness', [0])[0],
+        }
+
+        # Dynamically attach scores to the run object for JSON serialization
+        run.scores = scores_data
+
         if args.json:
             results.append(asdict(run))
         else:

@@ -5,7 +5,7 @@
  * Reads raw per-dimension scores for the run and displays them unweighted
  * (dimension-weighting is DEFERRED, ADR-020).
  */
-import { layout } from "./layouts/Default.astro";
+import layout from "./layouts/Default.astro";
 import { getScores } from "../lib/cache.js";
 
 interface Response {
@@ -16,11 +16,12 @@ const runId = Astro.params.runId;
 const raw = (await getScores(runId)) as unknown as { scores: Response };
 const data = raw.scores;
 const dimensions = Object.keys(data);
-const scores = Object.entries(data);
+const score = Object.entries(data)[0]?.[1] ?? 0;
+const title = "Run Scores"
 ---
 {
   layout {
-    title = "Run Scores"
+    title = title
   }
 }
 
@@ -38,7 +39,7 @@ const scores = Object.entries(data);
         <tr><th>Dimension</th>{#each dimensions as dim}<th>{dim}</th>{/each}</tr>
       </thead>
       <tbody>
-        {#each scores as [dim, score]}
+        {#each dimensions as dim}
           <tr>
             <td>{dim}</td>
             <td>{score}</td>

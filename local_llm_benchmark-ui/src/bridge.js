@@ -43,11 +43,59 @@ export async function fetchRuns() {
     }
 }
 
+/**
+ * Fetch quality scores from the Python CLI and return a Map of run IDs to scores.
+ *
+ * @returns {Promise<Map<string, Map<string, number>>>}
+ */
+export async function getScores() {
+    try {
+        const res = await fetch(`${API_URL}/runs?action=scores`);
+        if (!res.ok) {
+            throw new Error(`Request failed with status ${res.status}`);
+        }
+
+        const scores = await res.json();
+        const result = new Map();
+        scores.forEach(runScores => {
+            const runId = runScores.run_id;
+            if (runId && result.has(runId)) {
+                result.set(runId, {
+                    accuracy: runScores.accuracy,
+                    faithfulness: runScores.faithfulness,
+                    groundedness: runScores.groundedness,
+                    instructionFollowing: runScores.instructionFollowing,
+                    reasoning: runScores.reasoning,
+                    relevance: runScores.relevance,
+                    helpfulness: runScores.helpfulness,
+                    honesty: runScores.honesty,
+                    harmlessness: runScores.harmlessness,
+                });
+            }
+        });
+        return result;
+    } catch (error) {
+        console.error("getScores error:", error);
+        return new Map();
+    }
+}
+
 // Bridge-prefixed exports for TypeScript declarations
 export const bridgeFetchRuns = fetchRuns;
 export const bridgeGetScores = getScores;
- * createdAt: string;
- * } | null >}
+
+/**
+ * Fetch a single benchmark run by id.
+ *
+ * @param {string} runId - The run identifier.
+ * @returns {Promise<{run: {
+ *   id: string;
+ *   model: string;
+ *   prompt: string | null;
+ *   completion: string | null;
+ *   qualityScores: Record<string, number>;
+ *   createdAt: string;
+ * } | null>}}
  */
 export async function getRun(runId) {
     try {

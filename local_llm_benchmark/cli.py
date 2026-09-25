@@ -154,6 +154,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "list-results", help="List saved benchmark runs.")
     p_results.add_argument("--json", action="store_true",
                            help="Emit machine-readable JSON.")
+    p_results.add_argument("--scores", action="store_true",
+                           help="Include quality scores in the response.")
     p_results.set_defaults(func=list_results_command)
 
     # analyze
@@ -388,7 +390,7 @@ def list_engines(args: argparse.Namespace) -> int:
     return 0
 
 
-def list_benchmarks_cmd() -> int:
+def list_benchmarks_cmd(args: argparse.Namespace) -> int:
     table = Table(title="Bundled benchmarks")
     table.add_column("Name")
     table.add_column("Path")
@@ -440,6 +442,40 @@ def list_results_command(args: argparse.Namespace) -> int:
             console.print(run.run_id)
     if args.json:
         print(json.dumps(results, indent=2))
+    return 0
+
+
+def list_scores_command(args: argparse.Namespace) -> int:
+    """List quality scores for all benchmark runs."""
+    if not RESULTS_DIR.exists():
+        if args.json:
+            print("{}")
+        return 0
+
+    scores_data = {}
+    for run_path in sorted(RESULTS_DIR.glob("*.parquet")):
+        data = pq.read_table(run_path).to_pydict()
+
+        run_id = data.get('run_id', [None])[0]
+        if not run_id:
+            continue
+
+        scores_data[run_id] = {
+            "accuracy": data.get('accuracy', [0])[0],
+            "faithfulness": data.get('faithfulness', [0])[0],
+            "groundedness": data.get('groundedness', [0])[0],
+            "instructionFollowing": data.get('instructionFollowing', [0])[0],
+            "reasoning": data.get('reasoning', [0])[0],
+            "relevance": data.get('relevance', [0])[0],
+            "helpfulness": data.get('helpfulness', [0])[0],
+            "honesty": data.get('honesty', [0])[0],
+            "harmlessness": data.get('harmlessness', [0])[0],
+        }
+
+    if args.json:
+        print(json.dumps(scores_data, indent=2))
+    else:
+        console.print(f"Found {len(scores_data)} runs with scores.")
     return 0
 
 

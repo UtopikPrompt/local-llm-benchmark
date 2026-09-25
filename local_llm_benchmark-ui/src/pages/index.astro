@@ -5,9 +5,9 @@
   export interface Runs {
     id: string;
     model: string;
-    prompt: string;
-    completion: string;
-    qualityScores: QualityScores;
+    prompt: string | null;
+    completion: string | null;
+    qualityScores: Record<string, number>;
     createdAt: string;
   }
 
@@ -25,7 +25,7 @@
     qualityScores: Map<string, number>;
   }
 
-  export interface QualityScores {
+  export interface QualityScoresForAveraging extends QualityScoresIndex {
     accuracy: number;
     faithfulness: number;
     groundedness: number;
@@ -35,6 +35,10 @@
     helpfulness: number;
     honesty: number;
     harmlessness: number;
+  }
+
+  export interface QualityScoresIndex {
+    [key: string]: number;
   }
 
   let runs: Runs[] = [];
@@ -72,18 +76,31 @@
   }
 
   function getRunWithScores(run: Runs): Runs {
-    const scores = qualityScores.get(run.id) || {
-      accuracy: 0,
-      faithfulness: 0,
-      groundedness: 0,
-      instructionFollowing: 0,
-      reasoning: 0,
-      relevance: 0,
-      helpfulness: 0,
-      honesty: 0,
-      harmlessness: 0,
-    };
-    return { ...run, qualityScores: scores as QualityScores };
+    const scoresObj = qualityScores.get(run.id);
+    const scores: QualityScoresForAveraging = scoresObj
+      ? {
+          accuracy: scoresObj.accuracy,
+          faithfulness: scoresObj.faithfulness,
+          groundedness: scoresObj.groundedness,
+          instructionFollowing: scoresObj.instructionFollowing,
+          reasoning: scoresObj.reasoning,
+          relevance: scoresObj.relevance,
+          helpfulness: scoresObj.helpfulness,
+          honesty: scoresObj.honesty,
+          harmlessness: scoresObj.harmlessness,
+        }
+      : {
+          accuracy: 0,
+          faithfulness: 0,
+          groundedness: 0,
+          instructionFollowing: 0,
+          reasoning: 0,
+          relevance: 0,
+          helpfulness: 0,
+          honesty: 0,
+          harmlessness: 0,
+        };
+    return { ...run, qualityScores: scores as QualityScoresForAveraging };
   }
 
   function formatScore(score: number): string {
@@ -99,9 +116,20 @@
     return new Date(dateString).toLocaleString();
   }
 
-  function averageScore(scores: QualityScores): number {
-    const total = Object.values(scores).reduce((sum, s) => sum + s, 0);
-    return total / Object.keys(scores).length;
+  function averageScore(scores: QualityScoresForAveraging): number {
+    const metrics = [
+      "accuracy",
+      "faithfulness",
+      "groundedness",
+      "instructionFollowing",
+      "reasoning",
+      "relevance",
+      "helpfulness",
+      "honesty",
+      "harmlessness",
+    ];
+    const total = metrics.reduce((sum, m) => sum + (scores[m] || 0), 0);
+    return total / metrics.length;
   }
 
   async function fetchRuns(): Promise<Runs[]> {
@@ -434,7 +462,8 @@
 
     container.innerHTML = runs
       .map((run) => {
-        const scores = getRunWithScores(run).qualityScores;
+        const scores = getRunWithScores(run)
+          .qualityScores as QualityScoresForAveraging;
         const avgScore = averageScore(scores);
 
         return `
@@ -448,8 +477,8 @@
           <span>📊 Avg: ${formatScore(avgScore)}</span>
         </div>
         <div class="run-content">
-          <p><strong>Prompt:</strong> ${run.prompt.replace(/\n/g, " ")}</p>
-          <p><strong>Completion:</strong> ${run.completion.replace(/\n/g, " ")}</p>
+          <p><strong>Prompt:</strong> ${run.prompt ? run.prompt.replace(/\n/g, " ") : "..."}</p>
+          <p><strong>Completion:</strong> ${run.completion ? run.completion.replace(/\n/g, " ") : "..."}</p>
         </div>
         <div class="run-footer">
           <div class="score-grid">

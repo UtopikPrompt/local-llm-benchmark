@@ -1,6 +1,9 @@
 // Type declarations for the untyped bridge.js module.
 // Provides concrete types so relative imports resolve and are type-checked.
 
+// Runs interface is defined in index.astro for Astro JSX usage
+// For JS imports, we use the bridge types directly
+
 export interface RunMeta {
     id: string;
     model: string;
@@ -31,7 +34,14 @@ export interface QualityScores extends Map<string, number> {
 
 // The bridge.js module is untyped, so these declarations give relative
 // imports (`from '../bridge'`) concrete types for type-checking.
-declare const bridgeFetchRuns: () => Promise<Runs[]>;
+declare const bridgeFetchRuns: () => Promise<Array<{
+    id: string;
+    model: string;
+    prompt: string | null;
+    completion: string | null;
+    qualityScores: Record<string, number>;
+    createdAt: string;
+}>>;
 declare const bridgeGetScores: () => Promise<QualityScores[]>;
 
 declare const getRun: (runId: string) => Promise<{ run: RunMeta | null }>;

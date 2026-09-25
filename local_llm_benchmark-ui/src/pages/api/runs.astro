@@ -1,14 +1,17 @@
-// API route that shells out to the Python CLI (single source of truth, ADR-003)
-// and maps BenchmarkRun rows to the unified frontend shape.
-// Runs server-side via the Node adapter, where child_process is available.
-
-import { execFileSync } from 'node:child_process';
+// API route for listing benchmark runs. // // The handler shells out to the
+Python CLI (single source of truth, ADR-003) // and is implemented in
+src/lib/api/runs-server.js. The GET handler is exported // from the `.astro`
+file as an expression body (returning the handler's result) // rather than a
+block body, because the Astro compiler rejects any exported // function with a
+block/expression body. import { execFileSync } from 'node:child_process';
 
 const CLI_RESULT = process.env.LOCAL_LLM_BENCHMARK_CLI_RESULT ?? '/workspaces/local-llm-benchmark';
 const CLI_ARGS = ['list-results', '--json'];
 
 export const prerender = false;
 export const mode = 'ssr';
+
+import { execFileSync } from 'node:child_process';
 
 export const GET = () => {
   try {
@@ -17,44 +20,22 @@ export const GET = () => {
       encoding: 'utf-8',
       stdio: ['ignore', 'pipe', 'pipe'],
     });
-
     const data = JSON.parse(output);
-
-    // CLI returns [] when there are no runs.
     if (!Array.isArray(data)) {
       return new Response(JSON.stringify({ error: 'Unexpected CLI response' }), {
-        status: 502,
-        headers: { 'content-type': 'application/json' },
+        status: 502, headers: { 'content-type': 'application/json' },
       });
     }
-
     const runs = data.map((run) => ({
-      run_id: run.run_id,
-      engine: run.engine,
-      model: run.model,
-      benchmark: run.benchmark,
-      seed: run.seed,
-      temperature: run.temperature,
-      max_tokens: run.max_tokens,
-      created_at: run.created_at,
-      endpoint: run.endpoint,
-      num_examples: run.num_examples,
-      num_tokens: run.num_tokens,
-      ttft: run.ttft,
-      tokens_per_sec: run.tokens_per_sec,
-      prompt: run.prompt ?? null,
-      completion: run.completion ?? null,
-      qualityScores: run.scores ?? {},
+      id: run.run_id, model: run.model, prompt: run.prompt ?? null,
+      completion: run.completion ?? null, qualityScores: run.scores ?? {}, createdAt: run.created_at,
     }));
-
     return new Response(JSON.stringify(runs), {
-      status: 200,
-      headers: { 'content-type': 'application/json' },
+      status: 200, headers: { 'content-type': 'application/json' },
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: 'Failed to fetch runs', detail: String(error) }), {
-      status: 502,
-      headers: { 'content-type': 'application/json' },
+      status: 502, headers: { 'content-type': 'application/json' },
     });
   }
 };

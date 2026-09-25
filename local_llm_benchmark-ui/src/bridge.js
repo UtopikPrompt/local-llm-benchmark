@@ -43,41 +43,11 @@ export async function fetchRuns() {
     }
 }
 
-/**
- * Fetch the quality scores for all benchmark runs.
- *
- * @returns {Promise<Array<{id: string; scores: Record<string, number>}>}
- */
-export async function getScores() {
-    try {
-        const res = await fetch(API_URL);
-        if (!res.ok) {
-            throw new Error(`Request failed with status ${res.status}`);
-        }
-
-        const runs = await res.json();
-        return runs.map((run) => ({
-            id: run.run_id,
-            scores: run.qualityScores,
-        }));
-    } catch (error) {
-        // Safe fallbacks for the UI to render gracefully.
-        return [];
-    }
-}
-
-/**
- * Fetch a single benchmark run by id.
- *
- * @param {string} runId - The run identifier.
- * @returns {Promise<{run: {
- *   id: string;
- *   model: string;
- *   prompt: string | null;
- *   completion: string | null;
- *   qualityScores: Record<string, number>;
- *   createdAt: string;
- * } | null>}
+// Bridge-prefixed exports for TypeScript declarations
+export const bridgeFetchRuns = fetchRuns;
+export const bridgeGetScores = getScores;
+ * createdAt: string;
+ * } | null >}
  */
 export async function getRun(runId) {
     try {

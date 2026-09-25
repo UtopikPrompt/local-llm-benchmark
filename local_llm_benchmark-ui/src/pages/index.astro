@@ -1,6 +1,6 @@
 <script>
-  import { getScores } from "../bridge";
   import DefaultLayout from "../layouts/Default.astro";
+  import { bridgeFetchRuns, bridgeGetScores } from "../bridge.js";
 
   export interface Runs {
     id: string;
@@ -9,6 +9,20 @@
     completion: string;
     qualityScores: QualityScores;
     createdAt: string;
+  }
+
+  export interface QualityScores {
+    id: string;
+    accuracy: number;
+    faithfulness: number;
+    groundedness: number;
+    instructionFollowing: number;
+    reasoning: number;
+    relevance: number;
+    helpfulness: number;
+    honesty: number;
+    harmlessness: number;
+    qualityScores: Map<string, number>;
   }
 
   export interface QualityScores {
@@ -33,7 +47,25 @@
 
     try {
       const scoredRuns = await getScores();
-      scoredRuns.forEach((run: Runs) => qualityScores.set(run.id, run.scores));
+      scoredRuns.forEach(
+        (run: { id: string; qualityScores: Map<string, number> }) => {
+          const qs = new Map<string, number>(run.qualityScores);
+          const qualityScore: QualityScores = {
+            id: run.id,
+            qualityScores: qs,
+            accuracy: 0,
+            faithfulness: 0,
+            groundedness: 0,
+            instructionFollowing: 0,
+            reasoning: 0,
+            relevance: 0,
+            helpfulness: 0,
+            honesty: 0,
+            harmlessness: 0,
+          };
+          qualityScores.set(run.id, qualityScore);
+        },
+      );
     } catch (error) {
       console.error("getScores error:", error);
     }
@@ -51,7 +83,7 @@
       honesty: 0,
       harmlessness: 0,
     };
-    return { ...run, qualityScores: scores };
+    return { ...run, qualityScores: scores as QualityScores };
   }
 
   function formatScore(score: number): string {
@@ -72,40 +104,44 @@
     return total / Object.keys(scores).length;
   }
 
-  async function fetchRunsImpl() {
+  async function fetchRuns(): Promise<Runs[]> {
     try {
-      const runs = await fetchRuns();
+      const runs = await bridgeFetchRuns();
       return runs.map((run: Runs) => ({
         run_id: run.id,
         model: run.model,
         prompt: run.prompt,
         completion: run.completion,
-        scores: run.qualityScores,
-        created_at: run.createdAt,
+        id: run.id,
+        qualityScores: run.qualityScores,
+        createdAt: run.createdAt,
       }));
     } catch (error) {
-      console.error("fetchRunsImpl error:", error);
+      console.error("fetchRuns error:", error);
       return [];
     }
   }
 
-  async function fetchRuns(): Promise<Runs[]> {
-    return fetchRunsImpl();
-  }
-
   async function getScores(): Promise<QualityScores[]> {
-    return getScoresImpl();
-  }
-
-  async function getScoresImpl(): Promise<QualityScores[]> {
     try {
-      const scores = await getScores();
-      return scores.map((score: { id: string; scores: QualityScores }) => ({
-        id: score.id,
-        scores: score.scores,
-      }));
+      const scores = await bridgeGetScores();
+      return scores.map(
+        (score: { id: string; qualityScores: Map<string, number> }) => ({
+          id: score.id,
+          qualityScores: score.qualityScores,
+          accuracy: 0,
+          faithfulness: 0,
+          groundedness: 0,
+          instructionFollowing: 0,
+          reasoning: 0,
+          relevance: 0,
+          helpfulness: 0,
+          honesty: 0,
+          harmlessness: 0,
+        }),
+      );
     } catch (error) {
-      console.error("getScoresImpl error:", error);
+      console.error("getScores error:", error);
       return [];
     }
   }

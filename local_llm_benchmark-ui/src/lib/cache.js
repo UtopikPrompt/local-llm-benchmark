@@ -1,11 +1,11 @@
-import { fetchRuns, getScores, getRun } from '../bridge.js';
+import * as bridge from '../bridge.js';
 
 /**
  * List all cached benchmark runs
  * @returns {Promise<Array>} Array of benchmark runs
  */
 export async function listRuns() {
-    return fetchRuns();
+    return bridge.fetchRuns();
 }
 
 /**
@@ -13,7 +13,7 @@ export async function listRuns() {
  * @returns {Promise<Array>} Array of runs with quality scores
  */
 export async function getScores() {
-    return getScores();
+    return bridge.getScores();
 }
 
 /**
@@ -22,5 +22,5 @@ export async function getScores() {
  * @returns {Promise<{run: {id: string, model: string, prompt: string | null, completion: string | null, qualityScores: Record<string, number>, createdAt: string} | null}>}
  */
 export async function getRun(runId) {
-    return getRun(runId);
+    return bridge.getRun(runId);
 }

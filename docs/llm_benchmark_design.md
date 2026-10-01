@@ -217,3 +217,64 @@ Before writing the full implementation, the following components must be shown:
 4. **Storage** — SQLite schema and writer.
 5. **Dashboard** — filtered, grouped comparisons + engine-effect summary.
 6. **Recommendation engine** — conditional best-per-scenario output.
+
+---
+
+## 4. Technology Stack (Finalized)
+
+The repo is a **monorepo**. The stack splits into two language surfaces by layer
+so each can be excellent at its job:
+
+| Layer | Technology | Rationale |
+| :--- | :--- | :--- |
+| **Backend API** | **Python + FastAPI** | Unmatched LLM ecosystem; orchestrates the benchmark, talks to engines + judge, writes SQLite. |
+| **Frontend UI** | **TypeScript + React + Vite** | The dashboard is the main product and must be modern/impressive/scalable — only the TS/React ecosystem delivers that. |
+| **Data viz** | **Recharts** (standard) + optional **D3** (custom) | Best-in-class interactive charts; drives the "impressive" factor. |
+| **Persistence** | **SQLite** (v1) → Postgres later | SQLite now; the API seam lets you migrate the DB without touching the frontend. |
+
+**Why two languages:** the API is the seam — the frontend stays
+language-agnostic, so the backend could change without breaking the UI. The cost
+is maintaining two surfaces, but since the dashboard is the product, that is the
+trade worth making.
+
+---
+
+## 5. Monorepo Structure (Proposed)
+
+```
+local-llm-benchmark/
+├── docs/                          # Human-written, stays at the top
+│   ├── llm_benchmark_plan.md      # User-facing spec
+│   └── llm_benchmark_design.md    # This design doc
+├── apps/
+│   ├── dashboard/                 # React + Vite + TypeScript frontend
+│   │   ├── src/
+│   │   └── ...
+│   └── README.md
+├── packages/
+│   └── shared/                    # TypeScript types shared across monorepo (optional)
+├── engine/                        # Python backend: FastAPI + benchmark orchestrator
+│   ├── app/
+│   │   ├── main.py                # FastAPI entrypoint + API routes
+│   │   ├── core/                  # Config, logging, engine-effect recommendations
+│   │   ├── engines/               # Engine adapter interface + Ollama + LM Studio adapters
+│   │   ├── orchestrator/          # Run orchestrator driving the matrix
+│   │   ├── scoring/               # Deterministic checks + LLM-as-judge pipeline
+│   │   ├── storage/               # SQLite schema + writer
+│   │   └── scenarios/             # Scenario definitions + fixtures
+│   ├── tests/
+│   ├── pyproject.toml
+│   └── README.md
+├── .gitignore
+├── .python-version
+├── AGENTS.md                      # Repo conventions for agents (build/test/run commands)
+├── README.md                      # Repository root: overview + getting started
+└── pnpm-workspace.yaml             # Monorepo root workspace definition
+```
+
+> Design principle: **docs at the top, apps vs. packages clearly separated, each
+> layer navigable on its own.**
+
+---
+
+## 6. High-Level Framework (v1)

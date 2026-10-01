@@ -50,28 +50,27 @@
     if (qualityScores.size > 0) return;
 
     try {
-      const scoredRuns = await getScores();
-      scoredRuns.forEach(
-        (run: { id: string; qualityScores: Map<string, number> }) => {
-          const qs = new Map<string, number>(run.qualityScores);
-          const qualityScore: QualityScores = {
-            id: run.id,
-            qualityScores: qs,
-            accuracy: 0,
-            faithfulness: 0,
-            groundedness: 0,
-            instructionFollowing: 0,
-            reasoning: 0,
-            relevance: 0,
-            helpfulness: 0,
-            honesty: 0,
-            harmlessness: 0,
-          };
-          qualityScores.set(run.id, qualityScore);
-        },
-      );
+      const scoredRuns = await processScores();
+      // processScores returns a Map of run_id -> Map of metric_name -> score
+      for (const [runId, scoresMap] of scoredRuns) {
+        const qs = new Map<string, number>(scoresMap);
+        const qualityScore: QualityScores = {
+          id: runId,
+          qualityScores: qs,
+          accuracy: 0,
+          faithfulness: 0,
+          groundedness: 0,
+          instructionFollowing: 0,
+          reasoning: 0,
+          relevance: 0,
+          helpfulness: 0,
+          honesty: 0,
+          harmlessness: 0,
+        };
+        qualityScores.set(runId, qualityScore);
+      }
     } catch (error) {
-      console.error("getScores error:", error);
+      console.error("processScores error:", error);
     }
   }
 
@@ -150,27 +149,17 @@
     }
   }
 
-  async function getScores(): Promise<QualityScores[]> {
+  async function processScores(): Promise<Map<string, Map<string, number>>> {
     try {
-      const scores = await bridgeGetScores();
-      return scores.map(
-        (score: { id: string; qualityScores: Map<string, number> }) => ({
-          id: score.id,
-          qualityScores: score.qualityScores,
-          accuracy: 0,
-          faithfulness: 0,
-          groundedness: 0,
-          instructionFollowing: 0,
-          reasoning: 0,
-          relevance: 0,
-          helpfulness: 0,
-          honesty: 0,
-          harmlessness: 0,
-        }),
-      );
+      const scores = await (bridgeGetScores() as unknown as Map<
+        string,
+        Map<string, number>
+      >);
+      // bridgeGetScores returns a Map of run_id -> Map of metric_name -> score
+      return scores;
     } catch (error) {
-      console.error("getScores error:", error);
-      return [];
+      console.error("processScores error:", error);
+      return new Map();
     }
   }
 

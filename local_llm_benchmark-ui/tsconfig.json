@@ -15,5 +15,8 @@
         "node_modules",
         "dist",
         "**/*.astro"
+    ],
+    "filesExclude": [
+        "**/*.js"
     ]
 }

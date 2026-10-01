@@ -8,7 +8,7 @@ const config = defineConfig({
   output: "server",
   // Serve the Parquet files written by benchmark runs directly from disk.
   // "always" makes /runtime/ and /runtime/run/{id} resolve to their pages.
-  trailingSlash: "always",
+  trailingSlash: "never",
   adapter: node({
     mode: "standalone",
     jsc: {

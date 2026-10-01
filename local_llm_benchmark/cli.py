@@ -158,6 +158,13 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
                            help="Include quality scores in the response.")
     p_results.set_defaults(func=list_results_command)
 
+    # list-scores (separate command for scores only)
+    p_scores = sub.add_parser(
+        "list-scores", help="List quality scores for all benchmark runs.")
+    p_scores.add_argument("--json", action="store_true",
+                          help="Emit machine-readable JSON.")
+    p_scores.set_defaults(func=list_scores_command)
+
     # analyze
     p_analyze = sub.add_parser(
         "analyze", help="Analyze a saved run with DuckDB.")
@@ -337,7 +344,7 @@ def run_command(args: argparse.Namespace) -> int:
     return 0
 
 
-def _print_run_summary(run: BenchmarkRun) -> None:
+def _print_run_summary(run: BenchmarkRun, run_path: Path) -> None:
     table = Table(title=f"Benchmark run {run.run_id}")
     table.add_column("Metric")
     table.add_column("Value")
@@ -348,7 +355,7 @@ def _print_run_summary(run: BenchmarkRun) -> None:
     table.add_row("Tokens", run.num_tokens)
     table.add_row("TTFT (s)", f"{run.ttft:.3f}")
     table.add_row("Throughput (tok/s)", f"{run.tokens_per_sec:.1f}")
-    table.add_row("Result", str(parquet_path))
+    table.add_row("Result", str(run_path))
     console.print(table)
 
 
@@ -450,6 +457,8 @@ def list_scores_command(args: argparse.Namespace) -> int:
     if not RESULTS_DIR.exists():
         if args.json:
             print("{}")
+        else:
+            console.print("No scores found.")
         return 0
 
     scores_data = {}

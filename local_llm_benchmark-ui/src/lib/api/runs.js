@@ -8,14 +8,9 @@
 import { execFileSync } from 'node:child_process';
 
 const CLI_RESULT = process.env.LOCAL_LLM_BENCHMARK_CLI_RESULT ?? '/workspaces/local-llm-benchmark';
-const CLI_ARGS = ['list-results', '--json'];
+const CLI_ARGS = ['-m', 'local_llm_benchmark', 'list-results', '--json'];
 
-/**
- * Handle the GET request for the `/api/runs` route.
- *
- * @returns {Response} JSON Response with the list of runs.
- */
-export function handleRuns() {
+export async function handleRuns() {
     try {
         const output = execFileSync('python', CLI_ARGS, {
             cwd: CLI_RESULT,
@@ -61,7 +56,7 @@ export function handleRuns() {
  */
 export function handleScores() {
     try {
-        const output = execFileSync('python', [...CLI_ARGS, '--scores'], {
+        const output = execFileSync('python', ['-m', 'local_llm_benchmark', 'list-scores', '--json'], {
             cwd: CLI_RESULT,
             encoding: 'utf-8',
             stdio: ['ignore', 'pipe', 'pipe'],
@@ -69,13 +64,9 @@ export function handleScores() {
 
         const data = JSON.parse(output);
 
-        // Scores come as { run_id: { metric: score, ... } }
-        const result = {};
-        data.forEach(({ run_id, scores }) => {
-            result[run_id] = scores;
-        });
-
-        return new Response(JSON.stringify(result), {
+        // CLI returns an object mapping run_id -> scores when --scores flag is used
+        // e.g., {"run_id_1": {accuracy: 0.9, ...}, "run_id_2": {accuracy: 0.8, ...}}
+        return new Response(JSON.stringify(data), {
             status: 200,
             headers: { 'content-type': 'application/json' },
         });

@@ -50,29 +50,48 @@ export async function fetchRuns() {
  */
 export async function getScores() {
     try {
-        const res = await fetch(`${API_URL}/runs?action=scores`);
+        // Use direct fetch to avoid Astro router adding extra path segments
+        const res = await fetch(`${API_URL}?action=scores`);
         if (!res.ok) {
             throw new Error(`Request failed with status ${res.status}`);
         }
 
         const scores = await res.json();
         const result = new Map();
-        scores.forEach(runScores => {
-            const runId = runScores.run_id;
-            if (runId && result.has(runId)) {
+
+        // CLI returns an object mapping run_id -> scores, e.g., {"run_1": {accuracy: 0.9, ...}}
+        if (typeof scores === 'object' && scores !== null && !Array.isArray(scores)) {
+            for (const [runId, scoreData] of Object.entries(scores)) {
                 result.set(runId, {
-                    accuracy: runScores.accuracy,
-                    faithfulness: runScores.faithfulness,
-                    groundedness: runScores.groundedness,
-                    instructionFollowing: runScores.instructionFollowing,
-                    reasoning: runScores.reasoning,
-                    relevance: runScores.relevance,
-                    helpfulness: runScores.helpfulness,
-                    honesty: runScores.honesty,
-                    harmlessness: runScores.harmlessness,
+                    accuracy: scoreData.accuracy,
+                    faithfulness: scoreData.faithfulness,
+                    groundedness: scoreData.groundedness,
+                    instructionFollowing: scoreData.instructionFollowing,
+                    reasoning: scoreData.reasoning,
+                    relevance: scoreData.relevance,
+                    helpfulness: scoreData.helpfulness,
+                    honesty: scoreData.honesty,
+                    harmlessness: scoreData.harmlessness,
                 });
             }
-        });
+        } else if (Array.isArray(scores)) {
+            scores.forEach(runScores => {
+                const runId = runScores.run_id;
+                if (runId && result.has(runId)) {
+                    result.set(runId, {
+                        accuracy: runScores.accuracy,
+                        faithfulness: runScores.faithfulness,
+                        groundedness: runScores.groundedness,
+                        instructionFollowing: runScores.instructionFollowing,
+                        reasoning: runScores.reasoning,
+                        relevance: runScores.relevance,
+                        helpfulness: runScores.helpfulness,
+                        honesty: runScores.honesty,
+                        harmlessness: runScores.harmlessness,
+                    });
+                }
+            });
+        }
         return result;
     } catch (error) {
         console.error("getScores error:", error);

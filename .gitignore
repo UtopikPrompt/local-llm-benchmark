@@ -1,0 +1,25 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# ---- Node ----
+node_modules/
+dist/
+.viteer/
+.next/
+*.tsbuildinfo
+
+# ---- Local state ----
+*.sqlite
+*.db
+/data/*.sqlite
+/logs/
+.env
+
+# ---- Lockfiles tracked in repo (keep pnpm + pip lockfiles out of venv) ----
+# pnpm-lock.yaml and poetry.lock are version-controlled; venvs are not

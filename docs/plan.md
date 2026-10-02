@@ -16,13 +16,17 @@
 ## Build state (verified 2026-10-02)
 
 - **Design doc:** finalized, source of truth.
-- **Completed:** Slice 0 (foundation scaffold) and **Slice 1 (engine adapter +
-  Ollama)** are implemented and green — `EngineAdapter` base + Ollama adapter in
-  `engine/app/engines/`, covered by `engine/tests/test_ollama_engine.py`
-  (13 passing, 1 manual live-Ollama skip).
+- **Completed:** Slice 0 (foundation scaffold), **Slice 1 (engine adapter +
+  Ollama)** and **Slice 2 (LM Studio engine)** are implemented and green —
+  `EngineAdapter` base + Ollama and LM Studio adapters in `engine/app/engines/`,
+  covered by `engine/tests/test_ollama_engine.py` and
+  `engine/tests/test_lmstudio_engine.py` (27 passing, 2 manual live-server
+  skips).
+- **Engine dependency:** `requests` added to `engine/pyproject.toml` (both
+  adapters use it).
 - **Source code:** no `apps/dashboard`, no `packages/shared`. Everything below
-  Slice 1 is still to come.
-- **Repo is greenfield past Slice 1.** Treat each remaining slice as new code,
+  Slice 2 is still to come.
+- **Repo is greenfield past Slice 2.** Treat each remaining slice as new code,
   verified by a passing test or a live endpoint before moving on.
 
 ---

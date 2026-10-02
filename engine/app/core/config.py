@@ -26,7 +26,7 @@ class Settings:
             "OLLAMA_BASE_URL", "http://localhost:11434"
         )
         self.lm_studio_base_url: str = os.getenv(
-            "LM_STUDIO_BASE_URL", "http://localhost:1239"
+            "LM_STUDIO_BASE_URL", "http://localhost:1234"
         )
 
         # --- Judge (LLM-as-judge) --------------------------------------------

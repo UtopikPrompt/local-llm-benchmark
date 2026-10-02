@@ -1,89 +1,111 @@
-"""SQLite-backed persistence layer for benchmark runs."""
+"""Persistence layer: SQLAlchemy models and helpers."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Dict, List, Union
 
-import sqlite3
+from sqlalchemy import (
+    DateTime,
+    Enum as SAEnum,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    create_engine,
+)
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+    relationship,
+    sessionmaker,
+)
 
-
-SCHEMA_SQL: str = """
-CREATE TABLE IF NOT EXISTS runs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    run_id TEXT NOT NULL,
-    model TEXT NOT NULL,
-    dataset TEXT NOT NULL,
-    total_tokens INTEGER NOT NULL,
-    duration_seconds REAL NOT NULL,
-    tokens_per_second REAL NOT NULL,
-    status TEXT NOT NULL,
-    created_at TEXT NOT NULL
-);
-"""
-
-
-def _connect(db_path: Union[str, Path]) -> sqlite3.Connection:
-    conn = sqlite3.connect(str(db_path))
-    conn.row_factory = sqlite3.Row
-    return conn
+DATABASE_URL = "sqlite:///./benchmark.db"
+_engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(bind=_engine)
 
 
-def init_db(db_path: Union[str, Path]) -> sqlite3.Connection:
-    conn = _connect(db_path)
-    conn.executescript(SCHEMA_SQL)
-    conn.commit()
-    return conn
+class Base(DeclarativeBase):
+    """Declarative base for all ORM models."""
 
 
-def write_run(
-    conn: sqlite3.Connection,
-    *,
-    run_id: str,
-    model: str,
-    dataset: str,
-    total_tokens: int,
-    duration_seconds: float,
-    status: str = "completed",
-) -> int:
-    if duration_seconds > 0:
-        throughput = total_tokens / duration_seconds
-    else:
-        throughput = 0.0
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
-    cursor = conn.execute(
-        """
-        INSERT INTO runs (
-            run_id,
-            model,
-            dataset,
-            total_tokens,
-            duration_seconds,
-            tokens_per_second,
-            status,
-            created_at
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            run_id,
-            model,
-            dataset,
-            total_tokens,
-            duration_seconds,
-            throughput,
-            status,
-            datetime.now(timezone.utc).isoformat(),
-        ),
+
+class JudgeModel(Base):
+    """A judge model definition used to score LLM responses."""
+
+    __tablename__ = "judges"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    provider: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    runs: Mapped[list["Run"]] = relationship(back_populates="judge")
+
+
+class RunStatus(str, SAEnum):  # noqa: F821
+    """Lifecycle states for a benchmark run."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class Run(Base):
+    """A single benchmark execution."""
+
+    __tablename__ = "runs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    task_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    judge_id: Mapped[int | None] = mapped_column(
+        ForeignKey("judges.id"), nullable=True
     )
-    conn.commit()
-    return cursor.lastrowid
-
-
-def read_all_runs(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
-    cursor = conn.execute(
-        """
-        SELECT * FROM runs ORDER BY id
-        """
+    status: Mapped[RunStatus] = mapped_column(
+        SAEnum(RunStatus), default=RunStatus.PENDING, nullable=False
     )
-    return [dict(row) for row in cursor.fetchall()]
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=utcnow, onupdate=utcnow
+    )
+    judge: Mapped["JudgeModel | None"] = relationship(back_populates="runs")
+    result: Mapped["RunResult | None"] = relationship(
+        back_populates="run", uselist=False
+    )
+
+
+class RunResult(Base):
+    """A scored result produced for a completed run."""
+
+    __tablename__ = "run_results"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    run_id: Mapped[int] = mapped_column(
+        ForeignKey("runs.id"), unique=True, nullable=False
+    )
+    score: Mapped[int] = mapped_column(nullable=False)
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    run: Mapped[Run] = relationship(back_populates="result")
+
+
+def init_db() -> None:
+    """Create all tables in the database."""
+    Base.metadata.create_all(bind=_engine)
+
+
+def get_db():
+    """FastAPI dependency yielding a scoped session."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def session() -> Session:
+    """Return a new ORM session."""
+    return SessionLocal()

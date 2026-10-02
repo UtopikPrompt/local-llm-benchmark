@@ -1,15 +1,17 @@
-from openai import AsyncOpenAI
-from agent_framework.orchestrations import SequentialBuilder
-from agent_framework import Agent, Message
+import asyncio
+import json
 import os
 import re
-import asyncio
 import subprocess
 import urllib.request
+
+from agent_framework import Agent
+# from agent_framework_openai import OpenAIChatClient
+from agent_framework.openai import OpenAIClient
+from datetime import datetime, timezone
+from dotenv import load_dotenv
 from pathlib import Path
 from typing import List, Dict, Any
-from agent_framework_openai import OpenAIChatClient
-from dotenv import load_dotenv
 
 load_dotenv()  # load variables from .env in the current working directory
 
@@ -22,8 +24,46 @@ load_dotenv()  # load variables from .env in the current working directory
 # =====================================================================
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 TARGET_PROJECT_PATH = os.getenv("TARGET_PROJECT_PATH", ROOT_DIR)
-TEST_COMMAND = os.getenv("TEST_COMMAND", "cd engine && pytest tests/")
-PLAN_FILE_PATH = os.path.join(ROOT_DIR, "./docs/plan.md")
+
+
+def discover_plan_file(root_dir: str, target_project_path: str) -> str:
+    """Resolve the plan file path from env or common repository locations."""
+    explicit_plan = os.getenv("PLAN_FILE_PATH", "").strip()
+    if explicit_plan:
+        return os.path.abspath(os.path.join(root_dir, explicit_plan))
+
+    candidates = [
+        os.path.join(target_project_path, "docs", "plan.md"),
+        os.path.join(target_project_path, "docs", "llm_benchmark_plan.md"),
+        os.path.join(target_project_path, "plan.md"),
+    ]
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return candidate
+    return candidates[0]
+
+
+def detect_test_command(target_project_path: str) -> str:
+    """Infer a test command when none is explicitly configured."""
+    explicit = os.getenv("TEST_COMMAND", "").strip()
+    if explicit:
+        return explicit
+
+    root = Path(target_project_path)
+    engine_dir = root / "engine"
+    if (engine_dir / "pyproject.toml").exists() and (engine_dir / "tests").exists():
+        return "cd engine && pytest tests/"
+    if (root / "pyproject.toml").exists() and (root / "tests").exists():
+        return "pytest tests/"
+    if (root / "pnpm-workspace.yaml").exists() or (root / "pnpm-lock.yaml").exists():
+        return "pnpm -r test"
+    if (root / "package.json").exists():
+        return "npm test"
+    return ""
+
+
+TEST_COMMAND = detect_test_command(TARGET_PROJECT_PATH)
+PLAN_FILE_PATH = discover_plan_file(ROOT_DIR, TARGET_PROJECT_PATH)
 
 
 def normalize_llm_base_url(raw_url: str) -> str:
@@ -39,8 +79,22 @@ LLM_BASE_URL = normalize_llm_base_url(
 LLM_API_KEY = os.getenv("LLM_API_KEY", "ollama")
 LLM_MODEL_DEFAULT = os.getenv(
     "LLM_MODEL_DEFAULT", "Ornith-1.5-35B-Q4_K_M:128K")
+MAF_VERBOSE = os.getenv("MAF_VERBOSE", "true").strip().lower() not in {
+    "0", "false", "no", "off"
+}
 MAX_HEALING_ITERATIONS = max(
     1, int(os.getenv("MAX_HEALING_ITERATIONS", "3")))
+AUTO_COMMIT = os.getenv("MAF_AUTO_COMMIT", "false").strip().lower() in {
+    "1", "true", "yes", "on"
+}
+
+
+def log_step(message: str, *, verbose: bool = False) -> None:
+    """Emit user-facing runtime status with an optional verbosity gate."""
+    if verbose and not MAF_VERBOSE:
+        return
+    print(message)
+
 
 FILE_BLOCK_PATTERNS = [
     r"---\s*FILE:\s*([^\n]+?)\s*---\s*\n(.*?)\n\s*---\s*END FILE\s*---",
@@ -117,6 +171,82 @@ def choose_best_file_block_payload(candidates: List[str]) -> str:
     return best_text
 
 
+def list_workspace_entries(base_root: Path, *, max_entries: int = 60) -> str:
+    """Create a compact tree-like listing to orient the coding agent."""
+    entries: List[str] = []
+    for path in sorted(base_root.rglob("*")):
+        if len(entries) >= max_entries:
+            entries.append("... (truncated)")
+            break
+        if any(part.startswith(".") for part in path.parts if part not in (".", "..")):
+            continue
+        if path.is_dir():
+            continue
+        rel = path.relative_to(base_root).as_posix()
+        if "/." in rel:
+            continue
+        entries.append(rel)
+    return "\n".join(entries)
+
+
+def extract_candidate_file_paths(text: str) -> List[str]:
+    """Extract likely relative file paths from markdown text blocks."""
+    if not text:
+        return []
+
+    candidates = set()
+    for backticked in re.findall(r"`([^`]+)`", text):
+        token = backticked.strip()
+        if "/" in token or "." in os.path.basename(token):
+            candidates.add(token)
+
+    for token in re.findall(r"\b[\w./-]+\.[A-Za-z0-9_+-]+\b", text):
+        candidates.add(token)
+
+    return sorted(candidates)
+
+
+def build_agent_file_context(slice_markdown: str, *, base_root: Path, max_files: int = 10, max_chars_per_file: int = 6000) -> str:
+    """Gather relevant existing files and include them in the agent prompt."""
+    env_files = [
+        item.strip()
+        for item in os.getenv("AGENT_CONTEXT_FILES", "").split(",")
+        if item.strip()
+    ]
+    inferred_files = extract_candidate_file_paths(slice_markdown)
+
+    resolved_paths: List[Path] = []
+    for rel in env_files + inferred_files:
+        clean_rel = os.path.normpath(rel).strip()
+        if not clean_rel or clean_rel.startswith("..") or os.path.isabs(clean_rel):
+            continue
+        candidate = (base_root / clean_rel).resolve()
+        if base_root not in candidate.parents and candidate != base_root:
+            continue
+        if candidate.exists() and candidate.is_file() and candidate not in resolved_paths:
+            resolved_paths.append(candidate)
+        if len(resolved_paths) >= max_files:
+            break
+
+    if not resolved_paths:
+        return ""
+
+    context_blocks: List[str] = []
+    for path in resolved_paths:
+        rel = path.relative_to(base_root).as_posix()
+        try:
+            content = path.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        if len(content) > max_chars_per_file:
+            content = content[:max_chars_per_file] + "\n... [truncated]"
+        context_blocks.append(
+            f"--- CONTEXT FILE: {rel} ---\n{content}\n--- END CONTEXT FILE ---"
+        )
+
+    return "\n\n".join(context_blocks)
+
+
 def commit_all_changes(repo_path: str, message: str) -> None:
     """Create a git commit only when the working tree has content to commit."""
     try:
@@ -159,6 +289,54 @@ def llm_backend_available(url: str, timeout: float = 2.0) -> bool:
             return response.status < 500
     except Exception:
         return False
+
+
+CULPRIT_LOG_PATH = os.path.join(ROOT_DIR, "culprit_reports.json")
+LEGACY_CULPRIT_LOG_PATH = os.path.join(ROOT_DIR, "culprit_reports.jsonl")
+
+
+def persist_culprit_record(culprit: Dict[str, Any], *, slice_markdown: str, test_command: str) -> None:
+    """Append a structured investigation record for a failed slice to disk as JSON."""
+    record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "number": culprit.get("number"),
+        "name": culprit.get("name"),
+        "failure": str(culprit.get("failure", "")),
+        "test_command": test_command,
+        "max_healing_iterations": MAX_HEALING_ITERATIONS,
+        "slice_markdown": slice_markdown,
+    }
+    try:
+        existing: List[Dict[str, Any]] = []
+        if os.path.exists(CULPRIT_LOG_PATH):
+            with open(CULPRIT_LOG_PATH, "r", encoding="utf-8") as fh:
+                raw = fh.read().strip()
+            if raw:
+                parsed = json.loads(raw)
+                if isinstance(parsed, list):
+                    existing = parsed
+                elif isinstance(parsed, dict):
+                    existing = [parsed]
+        elif os.path.exists(LEGACY_CULPRIT_LOG_PATH):
+            with open(LEGACY_CULPRIT_LOG_PATH, "r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        parsed = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if isinstance(parsed, dict):
+                        existing.append(parsed)
+
+        existing.append(record)
+        with open(CULPRIT_LOG_PATH, "w", encoding="utf-8") as fh:
+            json.dump(existing, fh, ensure_ascii=False, indent=2)
+            fh.write("\n")
+    except Exception:
+        # Best-effort logging; do not crash the orchestrator when persisting fails.
+        pass
 
 # =====================================================================
 # 2. Automated Smart Plan Parser
@@ -286,6 +464,8 @@ class LocalWorkspaceTools:
     def run_tests() -> str:
         """Execute the configured test command through a shell so project-local chaining works."""
         try:
+            if not TEST_COMMAND.strip():
+                return "SKIP"
             test_cwd = TARGET_PROJECT_PATH if os.path.isdir(
                 TARGET_PROJECT_PATH) else ROOT_DIR
             res = subprocess.run(
@@ -307,69 +487,54 @@ class LocalWorkspaceTools:
 
 
 async def main():
-    print("🔍 Inspecting active architectural blueprints...")
+    log_step("🔍 Inspecting active plan...")
     try:
         pending_work = MarkdownPlanParser.get_pending_slices(PLAN_FILE_PATH)
     except Exception as e:
-        print(f"Aborting runtime initialization: {e}")
+        log_step(f"Aborting runtime initialization: {e}")
         return
 
     if not pending_work:
-        print("🎉 All targets matched. Workspace status up to date!")
+        log_step("🎉 All targets matched. Workspace status up to date!")
         return
 
-    print(
-        f"🚀 Loaded {len(pending_work)} outstanding architectural tasks. Spawning local LLM engines...")
+    log_step(f"🚀 Loaded {len(pending_work)} pending slices.", verbose=True)
     culprit_slices: List[Dict[str, Any]] = []
 
     if not llm_backend_available(LLM_BASE_URL):
-        print(
+        log_step(
             f"⚠️ No LLM backend detected at {LLM_BASE_URL}. "
             "Start Ollama or set LLM_BASE_URL before running the live orchestrator."
         )
         return
 
-    # 1. Instantiate the OpenAI-compatible clients directly for Ollama
-    local_coder_client = OpenAIChatClient(
+    log_step(
+        f"🧠 LLM details: base_url={LLM_BASE_URL}, model={LLM_MODEL_DEFAULT}, verbose={MAF_VERBOSE}",
+        verbose=True,
+    )
+
+    local_client = OpenAIClient(
         base_url=LLM_BASE_URL,
         api_key=LLM_API_KEY,
         model=LLM_MODEL_DEFAULT,
     )
 
-    local_qa_client = OpenAIChatClient(
-        base_url=LLM_BASE_URL,
-        api_key=LLM_API_KEY,
-        model=LLM_MODEL_DEFAULT,
-    )
-
-    # 2. Instantiate specialized personas using ChatAgent
     coder_agent = Agent(
-        client=local_coder_client,
+        client=local_client,
         name="SliceDeveloper",
         instructions=(
-            "You are an expert backend engineer implementing isolated feature folder components "
-            "using Vertical Slice Architecture guidelines. Your response must contain only file blocks. "
-            "No explanations, no markdown prose, and no code fences outside the file blocks. "
-            "Use this exact format for every file:\n"
-            "--- FILE: relative/path/to/target/file.ts ---\n"
-            "[Your complete file code here]\n"
+            "You are a software engineer writing production-ready code updates. "
+            "Always follow the requested file-block output format exactly. "
+            "Return only file blocks and no other prose.\n"
+            "--- FILE: relative/path/from/repo/root.ext ---\n"
+            "<full file contents>\n"
             "--- END FILE ---\n"
-            "If you create multiple files, emit multiple blocks in sequence. "
-            "Do not omit the file boundary markers. Generate real code based on the user's slice requirement."
-        )
-    )
-
-    qa_agent = Agent(
-        client=local_qa_client,
-        name="VerificationQA",
-        instructions=(
-            "You verify code stability. Inspect the written structures and compilation terminal logs. "
-            "If failures are apparent, issue code corrections back to the developer explicitly."
+            "If multiple files are needed, emit multiple blocks."
         )
     )
 
     formatter_agent = Agent(
-        client=local_coder_client,
+        client=local_client,
         name="FileBlockFormatter",
         instructions=(
             "You normalize raw coding output into strict deployable file blocks only. "
@@ -383,21 +548,32 @@ async def main():
 
     # Process outstanding array tasks sequentially
     for item in pending_work:
-        print(f"\n==================================================================")
-        print(
-            f"⚡ MAF STARTING SUPERSTEP: Slice {item['number']} — {item['name']}")
-        print(f"==================================================================")
+        log_step(
+            f"\n==================================================================")
+        log_step(
+            f"⚡ MAF STARTING SUPERSTEP: Slice {item['number']} — {item['name']}"
+        )
+        log_step(
+            f"==================================================================")
+        log_step(
+            f"📝 Slice details: requested work = '{item['name']}', markdown length = {len(item['markdown_content'])} chars",
+            verbose=True,
+        )
 
-        # Enforce deterministic agent message passing route using SequentialBuilder
-        slice_workflow = (
-            SequentialBuilder(
-                participants=[coder_agent, qa_agent]
-            ).build()
+        base_root = Path(TARGET_PROJECT_PATH).resolve()
+        workspace_map = list_workspace_entries(base_root)
+        file_context = build_agent_file_context(
+            item["markdown_content"],
+            base_root=base_root,
         )
 
         initial_prompt = (
             f"Implement the following slice exactly.\n\n"
             f"{item['markdown_content']}\n\n"
+            "Repository file map (truncated):\n"
+            f"{workspace_map}\n\n"
+            "Relevant existing file context:\n"
+            f"{file_context or '[No specific files resolved from slice text]'}\n\n"
             "Return only valid file blocks using this exact schema and nothing else:\n\n"
             "--- FILE: relative/path/from/repo/root.ext ---\n"
             "<full file contents here, without markdown fences>\n"
@@ -410,64 +586,39 @@ async def main():
             "5. Use real code matching the slice requirements and project structure."
         )
 
-        # 1. Trigger the collaborative Multi-Agent execution graph
-        print("[MAF] Routing task to development core...")
-        try:
-            workflow_session = await slice_workflow.run(initial_prompt)
-        except Exception as exc:
-            print(
-                f"[MAF] Agent workflow failed for slice {item['number']}: {exc}")
-            continue
+        log_step("[MAF] Routing task to coding agent...")
+        log_step(
+            "[MAF] Initial prompt summary: "
+            f"slice {item['number']} / {item['name']} / {len(initial_prompt)} chars",
+            verbose=True,
+        )
 
-        final_message = ""
         candidate_payloads: List[str] = []
-        messages_list = []
-        if hasattr(workflow_session, 'get_outputs'):
-            outputs = workflow_session.get_outputs()
-            if outputs:
-                messages_list = outputs
-                candidate_payloads.extend(
-                    extract_text_payload(output_item) for output_item in outputs
-                )
-        if not messages_list and hasattr(workflow_session, 'state') and 'messages' in workflow_session.state:
-            messages_list = workflow_session.state['messages']
-        elif not messages_list and hasattr(workflow_session, 'messages'):
-            messages_list = workflow_session.messages
-        elif not messages_list:
-            messages_list = getattr(
-                workflow_session, 'context', {}).get('messages', [])
-
-        if messages_list:
-            candidate_payloads.extend(
-                extract_text_payload(msg_item) for msg_item in messages_list
-            )
-
-        print("\n--- [CONVERSATION TRAIL LOGS] ---")
-        for msg in messages_list:
-            content = extract_text_payload(msg)
-            if not content:
-                continue
-            author = msg.get('author_name', 'Agent') if isinstance(
-                msg, dict) else getattr(msg, 'author_name', 'Agent')
-            preview = content[:200].replace("\n", " ") if len(
-                content) > 200 else content.replace("\n", " ")
-            print(f"🔹 [{author}]: {preview}...")
-            candidate_payloads.append(content)
-        print("---------------------------------\n")
-
-        fallback_payload = extract_text_payload(workflow_session)
-        if fallback_payload:
-            candidate_payloads.append(fallback_payload)
+        try:
+            coding_session = await coder_agent.run(initial_prompt)
+            candidate_payloads.append(extract_text_payload(coding_session))
+        except Exception as exc:
+            log_step(f"[MAF] Agent run failed for slice {item['number']}: {exc}")
+            continue
 
         final_message = choose_best_file_block_payload(candidate_payloads)
 
         if not final_message:
-            print(
-                "[MAF] Primary payload had no deployable file blocks. Invoking formatter recovery agent...")
+            log_step(
+                "[MAF] Primary payload had no deployable file blocks. Invoking formatter recovery agent..."
+            )
+            log_step(
+                f"[MAF] Candidate payload count: {len(candidate_payloads)}; available excerpts: {sum(1 for c in candidate_payloads if c[:200])}",
+                verbose=True,
+            )
             recovery_prompt = (
                 "Normalize the following raw output into valid file blocks only. "
                 "If code is incomplete, synthesize complete files from the slice requirements.\n\n"
                 f"Slice requirements:\n{item['markdown_content']}\n\n"
+                "Repository file map (truncated):\n"
+                f"{workspace_map}\n\n"
+                "Relevant existing file context:\n"
+                f"{file_context or '[No specific files resolved from slice text]'}\n\n"
                 "Raw outputs:\n"
                 + "\n\n".join(candidate_payloads[-8:])
             )
@@ -479,14 +630,17 @@ async def main():
                 final_message = ""
 
         # 3. Write files emitted by the agents to your real project disk
-        print("[MAF] Extracting code payloads and writing to filesystem...")
+        log_step("[MAF] Extracting code payloads and writing to filesystem...")
+        log_step(
+            f"[MAF] Final payload length: {len(final_message)} chars", verbose=True)
         disk_report = LocalWorkspaceTools.write_files_from_markdown(
             final_message)
-        print(disk_report)
+        log_step(disk_report)
 
         if "Warning: No clean file structural syntax blocks matched or generated." in disk_report:
-            print(
-                "[MAF] First write pass failed. Requesting a second-pass formatter correction...")
+            log_step(
+                "[MAF] First write pass failed. Requesting a second-pass formatter correction..."
+            )
             retry_prompt = (
                 "Rewrite this into valid file blocks only using the exact required format.\n\n"
                 f"Slice requirements:\n{item['markdown_content']}\n\n"
@@ -497,45 +651,61 @@ async def main():
                 retry_message = extract_text_payload(formatter_retry_session)
                 disk_report = LocalWorkspaceTools.write_files_from_markdown(
                     retry_message)
-                print(disk_report)
+                log_step(disk_report)
             except Exception as exc:
-                print(f"[MAF] Formatter second pass failed: {exc}")
+                log_step(f"[MAF] Formatter second pass failed: {exc}")
 
         if "Warning: No clean file structural syntax blocks matched or generated." in disk_report:
-            print(
-                f"[MAF] No deployable files produced for slice {item['number']} after self-healing. Skipping validation for this slice.")
+            log_step(
+                f"[MAF] No deployable files produced for slice {item['number']} after self-healing. Skipping validation for this slice."
+            )
             continue
 
         # 4. Verification Checkpoint loop
-        print(f"[MAF] Running test validation suites via: '{TEST_COMMAND}'...")
+        if TEST_COMMAND:
+            log_step(f"[MAF] Running test validation suites via: '{TEST_COMMAND}'...")
+        else:
+            log_step("[MAF] No test command detected. Skipping test validation.")
         test_status = LocalWorkspaceTools.run_tests()
 
-        if test_status == "PASS":
-            print(
-                f"✅ Slice {item['number']} Verified Green! Bundling local workspace to Git history...")
+        if test_status in {"PASS", "SKIP"}:
+            log_step(
+                f"✅ Slice {item['number']} Verified Green! Bundling local workspace to Git history..."
+            )
             try:
                 MarkdownPlanParser.mark_slice_complete(
                     PLAN_FILE_PATH, item['number'])
             except Exception:
                 pass
-            repo_base = os.path.join(TARGET_PROJECT_PATH, "..")
-            commit_all_changes(
-                repo_base, f"maf-agent: slice {item['number']} compiled ({item['name']})")
+            if AUTO_COMMIT:
+                repo_base = os.path.join(TARGET_PROJECT_PATH, "..")
+                commit_all_changes(
+                    repo_base, f"maf-agent: slice {item['number']} compiled ({item['name']})")
         else:
-            print(
-                f"❌ Slice {item['number']} build failed integration testing checks. Initiating self-healing protocol...")
+            log_step(
+                f"❌ Slice {item['number']} build failed integration testing checks. Initiating self-healing protocol..."
+            )
 
             healed = False
             latest_failure = test_status
 
             for attempt in range(1, MAX_HEALING_ITERATIONS + 1):
-                print(
-                    f"[MAF] Self-healing attempt {attempt}/{MAX_HEALING_ITERATIONS} for Slice {item['number']}...")
+                log_step(
+                    f"[MAF] Self-healing attempt {attempt}/{MAX_HEALING_ITERATIONS} for Slice {item['number']}..."
+                )
+                log_step(
+                    f"[MAF] Latest failure preview: {str(latest_failure)[:250]}",
+                    verbose=True,
+                )
                 healing_prompt = (
                     "You are fixing the same slice after failing tests. "
                     "Return only strict file blocks and directly address this failure output.\n\n"
                     f"Slice number: {item['number']}\n"
                     f"Slice name: {item['name']}\n\n"
+                    "Repository file map (truncated):\n"
+                    f"{workspace_map}\n\n"
+                    "Relevant existing file context:\n"
+                    f"{file_context or '[No specific files resolved from slice text]'}\n\n"
                     "Latest failing test output:\n"
                     f"{latest_failure}\n\n"
                     "Required output format:\n"
@@ -548,18 +718,22 @@ async def main():
                     healing_session = await coder_agent.run(healing_prompt)
                 except Exception as exc:
                     latest_failure = f"Developer healing agent failed to run: {exc}"
-                    print(f"[MAF] {latest_failure}")
+                    log_step(f"[MAF] {latest_failure}")
                     continue
 
                 healing_text_payload = extract_text_payload(healing_session)
                 healing_report = LocalWorkspaceTools.write_files_from_markdown(
                     healing_text_payload)
-                print(healing_report)
+                log_step(healing_report)
 
                 if "Warning: No clean file structural syntax blocks matched or generated." in healing_report:
                     formatter_prompt = (
                         "Normalize this raw developer output into valid file blocks only.\n\n"
                         f"Slice requirements:\n{item['markdown_content']}\n\n"
+                        "Repository file map (truncated):\n"
+                        f"{workspace_map}\n\n"
+                        "Relevant existing file context:\n"
+                        f"{file_context or '[No specific files resolved from slice text]'}\n\n"
                         f"Raw developer output:\n{healing_text_payload}"
                     )
                     try:
@@ -568,9 +742,9 @@ async def main():
                             formatter_session)
                         healing_report = LocalWorkspaceTools.write_files_from_markdown(
                             formatted_payload)
-                        print(healing_report)
+                        log_step(healing_report)
                     except Exception as exc:
-                        print(
+                        log_step(
                             f"[MAF] Formatter during self-healing failed: {exc}")
 
                 if "Warning: No clean file structural syntax blocks matched or generated." in healing_report:
@@ -585,15 +759,16 @@ async def main():
                 latest_failure = final_check
 
             if healed:
-                print("✅ Self-healing loop successful! Slice verified.")
+                log_step("✅ Self-healing loop successful! Slice verified.")
                 try:
                     MarkdownPlanParser.mark_slice_complete(
                         PLAN_FILE_PATH, item['number'])
                 except Exception:
                     pass
-                repo_base = os.path.join(TARGET_PROJECT_PATH, "..")
-                commit_all_changes(
-                    repo_base, f"maf-agent: slice {item['number']} self-healed and compiled")
+                if AUTO_COMMIT:
+                    repo_base = os.path.join(TARGET_PROJECT_PATH, "..")
+                    commit_all_changes(
+                        repo_base, f"maf-agent: slice {item['number']} self-healed and compiled")
             else:
                 culprit = {
                     "number": item["number"],
@@ -601,18 +776,26 @@ async def main():
                     "failure": latest_failure,
                 }
                 culprit_slices.append(culprit)
-                print(
+                persist_culprit_record(
+                    culprit,
+                    slice_markdown=item["markdown_content"],
+                    test_command=TEST_COMMAND,
+                )
+                log_step(
                     f"🚨 Slice {item['number']} exceeded self-healing limit ({MAX_HEALING_ITERATIONS}). "
-                    "Marking as culprit and continuing best-effort with remaining slices.")
+                    "Marking as culprit and continuing best-effort with remaining slices. "
+                    f"Detailed record saved to {CULPRIT_LOG_PATH}."
+                )
 
     if culprit_slices:
-        print("\n[MAF] Culprit slices requiring manual investigation:")
+        log_step("\n[MAF] Culprit slices requiring manual investigation:")
         for culprit in culprit_slices:
             snippet = str(culprit["failure"]).strip().replace("\n", " ")
             if len(snippet) > 300:
                 snippet = snippet[:300] + "..."
-            print(
-                f" - Slice {culprit['number']} — {culprit['name']}: {snippet}")
+            log_step(
+                f" - Slice {culprit['number']} — {culprit['name']}: {snippet}"
+            )
 
 
 if __name__ == "__main__":

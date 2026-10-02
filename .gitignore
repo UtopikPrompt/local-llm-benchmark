@@ -29,3 +29,4 @@ dist/
 .aider.input.history
 .aider-connected-models.json
 .aider*
+culprit_reports.json

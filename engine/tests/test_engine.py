@@ -1,27 +1,31 @@
-"""Smoke tests for the engine test slice.
+"""Tests for the core engine evaluation logic."""
 
-These tests are intentionally self-contained so the ``engine/tests`` directory
-always collects at least one runnable test, even before feature-specific
-assertions are added.
-"""
 from __future__ import annotations
 
 import pytest
 
 from .conftest import DEFAULT_ENGINE_INPUT
 
-
-def test_smoke(engine_input: int) -> None:
-    """The engine slice must collect and run without error."""
-    assert engine_input == DEFAULT_ENGINE_INPUT
-
-
-def test_engine_name(engine_name: str) -> None:
-    """The engine slice should expose its own name fixture."""
-    assert engine_name == "engine"
+# Localized imports so the test module imports cleanly even if a
+# dependency (e.g. llama_cpp) is not installed.
+pytest.importorskip("llama_cpp")
 
 
-@pytest.mark.parametrize("value", [0, 1, 42, -7])
-def test_engine_input_roundtrip(value: int) -> None:
-    """Values returned by the fixture should round-trip unchanged."""
-    assert value + 0 == value
+def test_default_engine_input_has_required_keys() -> None:
+    """The shared default input must contain all required fields."""
+    for key in ("query", "model", "temperature", "max_tokens"):
+        assert key in DEFAULT_ENGINE_INPUT
+
+
+@pytest.mark.parametrize("input_override", [
+    {"query": "hello"},
+    {"model": "llama3.1:8b"},
+])
+def test_engine_runs(input_override: dict) -> None:
+    """Smoke-test that the engine can be invoked with a default input."""
+    from engine.core.engine import run_query
+
+    merged = {**DEFAULT_ENGINE_INPUT, **input_override}
+    result = run_query(**merged)
+    assert result is not None
+    assert isinstance(result, str)

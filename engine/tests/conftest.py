@@ -1,25 +1,13 @@
-"""Shared pytest fixtures for the engine test slice.
+"""Shared pytest fixtures and constants for the engine test suite."""
 
-Keeping fixtures local to this slice means tests never reach outside the
-``engine`` feature, preserving the isolation that vertical-slice architecture
-relies on.
-"""
 from __future__ import annotations
 
-from typing import Final
+from typing import Any
 
-import pytest
-
-DEFAULT_ENGINE_INPUT: Final[int] = 42
-
-
-@pytest.fixture
-def engine_input() -> int:
-    """Provide a deterministic input value for engine tests."""
-    return DEFAULT_ENGINE_INPUT
-
-
-@pytest.fixture
-def engine_name() -> str:
-    """Provide the human-readable name of the engine under test."""
-    return "engine"
+# Default engine input used across the test suite.
+DEFAULT_ENGINE_INPUT: dict[str, Any] = {
+    "query": "What is the capital of France?",
+    "model": "qwen2.5:7b",
+    "temperature": 0.7,
+    "max_tokens": 256,
+}

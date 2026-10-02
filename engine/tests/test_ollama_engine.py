@@ -43,7 +43,8 @@ REQUEST = {"model": "phi-3.5-mini", "prompt": "What is the answer?"}
 # --- Contract contract ------------------------------------------------------
 def test_normalise_maps_ollama_contract() -> None:
     engine = OllamaEngine(base_url="http://localhost:11434")
-    response = engine.normalise_response("The answer is 42.", RECORDED_RESPONSE)
+    response = engine.normalise_response(
+        "The answer is 42.", RECORDED_RESPONSE)
 
     assert response.text == "The answer is 42."
     assert response.input_tokens == RECORDED_RESPONSE["prompt_eval_count"]

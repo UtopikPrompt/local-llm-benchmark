@@ -52,7 +52,7 @@ gateway), CSV/JSON export, specialized judges, warehouse/sync.
 
 ---
 
-## Slice 0 — Foundation scaffold
+## [x] Slice 0 — Foundation scaffold
 
 **Goal:** A backend that boots and exposes a health endpoint, plus the config,
 logging, and SQLite initialization plumbing. This slice proves the runtime
@@ -78,7 +78,7 @@ surface (Python + FastAPI, port 8000) before any benchmark logic.
 
 ---
 
-## Slice 1 — Engine adapter + Ollama
+## [x] Slice 1 — Engine adapter + Ollama
 
 **Goal:** The **engine adapter interface** (§design §9, contract 1) and the first
 working engine, Ollama, implementing the unified OpenAI-compatible contract.
@@ -107,7 +107,7 @@ working engine, Ollama, implementing the unified OpenAI-compatible contract.
 
 ---
 
-## Slice 2 — LM Studio engine
+## [x] Slice 2 — LM Studio engine
 
 **Goal:** A **second** engine adapter against the identical contract, so the
 orchestrator is already exercised with ≥2 engines (relative effect is never a

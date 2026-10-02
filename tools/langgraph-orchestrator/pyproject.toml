@@ -1,0 +1,16 @@
+[project]
+name = "langgraph-orchestrator"
+version = "0.1.0"
+description = "Hierarchical orchestration system with LangGraph for autonomous project coding"
+requires-python = ">=3.12"
+dependencies = [
+    "langgraph>=0.1.0",
+    "pydantic>=2.0",
+]
+
+[project.scripts]
+orchestrator = "langgraph_orchestrator.cli:main"
+
+[build-system]
+requires = ["setuptools>=40.8.0"]
+build-backend = "setuptools.build_meta"

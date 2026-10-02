@@ -30,7 +30,8 @@ class Settings:
         )
 
         # --- Judge (LLM-as-judge) --------------------------------------------
-        self.judge_base_url: str = os.getenv("JUDGE_BASE_URL", self.lm_studio_base_url)
+        self.judge_base_url: str = os.getenv(
+            "JUDGE_BASE_URL", self.lm_studio_base_url)
         self.judge_id: str = os.getenv("JUDGE_ID", "local-judge")
 
         # --- Default models ---------------------------------------------------

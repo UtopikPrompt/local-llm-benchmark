@@ -23,3 +23,9 @@ dist/
 
 # ---- Lockfiles tracked in repo (keep pnpm + pip lockfiles out of venv) ----
 # pnpm-lock.yaml and poetry.lock are version-controlled; venvs are not
+
+# ---- Aider ----
+.aider.history
+.aider.input.history
+.aider-connected-models.json
+.aider*

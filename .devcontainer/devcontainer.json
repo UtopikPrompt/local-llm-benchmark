@@ -32,7 +32,7 @@
       }
     }
   },
-  "postCreateCommand": "pip3 install pip --upgrade; pnpm config set store-dir ~/.pnpm-store; pnpm approve-builds --all; pnpm install",
+  "postCreateCommand": "python3 -m pip install --upgrade pip setuptools wheel && python3 -m pip install aider-chat && pnpm config set store-dir ~/.pnpm-store && pnpm approve-builds --all && pnpm install",
   "forwardPorts": [8000, 5173],
   "remoteUser": "vscode"
 }

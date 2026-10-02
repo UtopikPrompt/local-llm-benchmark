@@ -49,7 +49,8 @@ REQUEST = {"model": "phi-3.5-mini", "prompt": "What is the answer?"}
 # --- Contract ---------------------------------------------------------------
 def test_normalise_maps_lmstudio_contract() -> None:
     engine = LmStudioEngine(base_url="http://localhost:1234")
-    response = engine.normalise_response("The answer is 42.", RECORDED_RESPONSE)
+    response = engine.normalise_response(
+        "The answer is 42.", RECORDED_RESPONSE)
 
     assert response.text == "The answer is 42."
     assert response.input_tokens == RECORDED_RESPONSE["usage"]["prompt_tokens"]

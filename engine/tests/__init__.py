@@ -1,1 +1,1 @@
-"""Test suite for the engine package."""
+"""Test package for the engine."""

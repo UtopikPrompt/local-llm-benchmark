@@ -1,3 +1,1 @@
-"""Engine package for the local LLM benchmark backend."""
-
-__version__ = "0.1.0"
+"""Application package for the engine."""

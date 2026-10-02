@@ -39,6 +39,14 @@ LLM_BASE_URL = normalize_llm_base_url(
 LLM_API_KEY = os.getenv("LLM_API_KEY", "ollama")
 LLM_MODEL_DEFAULT = os.getenv(
     "LLM_MODEL_DEFAULT", "Ornith-1.5-35B-Q4_K_M:128K")
+MAX_HEALING_ITERATIONS = max(
+    1, int(os.getenv("MAX_HEALING_ITERATIONS", "3")))
+
+FILE_BLOCK_PATTERNS = [
+    r"---\s*FILE:\s*([^\n]+?)\s*---\s*\n(.*?)\n\s*---\s*END FILE\s*---",
+    r"FILE\s*:\s*([^\n]+?)\s*\n(.*?)\n\s*END FILE\s*",
+    r"```(?:[A-Za-z0-9_+-]+)?\s*---\s*FILE:\s*([^\n]+?)\s*---\s*\n(.*?)\n\s*---\s*END FILE\s*---\s*```",
+]
 
 
 def extract_text_payload(payload: Any) -> str:
@@ -68,6 +76,45 @@ def extract_text_payload(payload: Any) -> str:
     if hasattr(payload, "content") and payload.content:
         return str(payload.content)
     return str(payload)
+
+
+def strip_outer_code_fences(text: str) -> str:
+    """Remove a single outer markdown fence pair from text."""
+    if not text:
+        return text
+    stripped = text.strip()
+    stripped = re.sub(r"^```(?:[A-Za-z0-9_+-]+)?\s*\n", "", stripped)
+    stripped = re.sub(r"\n```\s*$", "", stripped)
+    return stripped
+
+
+def count_file_blocks(text: str) -> int:
+    """Count how many file blocks are present in a payload."""
+    if not text:
+        return 0
+    normalized = strip_outer_code_fences(text)
+    for pattern in FILE_BLOCK_PATTERNS:
+        matches = re.findall(pattern, normalized, re.DOTALL)
+        if matches:
+            return len(matches)
+    return 0
+
+
+def choose_best_file_block_payload(candidates: List[str]) -> str:
+    """Pick the payload with the highest number of valid file blocks."""
+    ranked = []
+    for candidate in candidates:
+        if not candidate:
+            continue
+        block_count = count_file_blocks(candidate)
+        ranked.append((block_count, len(candidate), candidate))
+    if not ranked:
+        return ""
+    ranked.sort(reverse=True)
+    best_blocks, _, best_text = ranked[0]
+    if best_blocks <= 0:
+        return ""
+    return best_text
 
 
 def commit_all_changes(repo_path: str, message: str) -> None:
@@ -200,12 +247,13 @@ class LocalWorkspaceTools:
         if not llm_output or not isinstance(llm_output, str):
             return "Warning: No file blocks found in the agent output."
 
-        normalized = llm_output.strip()
-        normalized = re.sub(r"^```(?:[A-Za-z0-9_+-]+)?\s*\n", "", normalized)
-        normalized = re.sub(r"\n```\s*$", "", normalized)
-
-        pattern = r"---\s*FILE:\s*([^\n]+?)\s*---\s*\n(.*?)\n\s*---\s*END FILE\s*---"
-        matches = re.findall(pattern, normalized, re.DOTALL)
+        text = strip_outer_code_fences(llm_output)
+        matches = []
+        for pattern in FILE_BLOCK_PATTERNS:
+            found = re.findall(pattern, text, re.DOTALL)
+            if found:
+                matches.extend(found)
+                break
 
         if not matches:
             return "Warning: No clean file structural syntax blocks matched or generated."
@@ -220,10 +268,8 @@ class LocalWorkspaceTools:
                 report.append(f"Skipped unsafe path: {clean_filepath}")
                 continue
 
-            sanitized_content = content.strip()
-            sanitized_content = re.sub(
-                r"^```(?:[A-Za-z0-9_+-]+)?\s*\n", "", sanitized_content)
-            sanitized_content = re.sub(r"\n```\s*$", "", sanitized_content)
+            sanitized_content = strip_outer_code_fences(content.strip())
+            sanitized_content = sanitized_content.strip()
 
             true_path = (base_root / relative_path).resolve()
             if base_root not in true_path.parents and true_path != base_root:
@@ -274,6 +320,7 @@ async def main():
 
     print(
         f"🚀 Loaded {len(pending_work)} outstanding architectural tasks. Spawning local LLM engines...")
+    culprit_slices: List[Dict[str, Any]] = []
 
     if not llm_backend_available(LLM_BASE_URL):
         print(
@@ -301,12 +348,14 @@ async def main():
         name="SliceDeveloper",
         instructions=(
             "You are an expert backend engineer implementing isolated feature folder components "
-            "using Vertical Slice Architecture guidelines. When writing source text or queries, "
-            "you MUST format your response files EXACTLY inside these text boundary blocks:\n"
+            "using Vertical Slice Architecture guidelines. Your response must contain only file blocks. "
+            "No explanations, no markdown prose, and no code fences outside the file blocks. "
+            "Use this exact format for every file:\n"
             "--- FILE: relative/path/to/target/file.ts ---\n"
             "[Your complete file code here]\n"
             "--- END FILE ---\n"
-            "Do not talk outside these blocks. Generate real code based on the user's slice requirements."
+            "If you create multiple files, emit multiple blocks in sequence. "
+            "Do not omit the file boundary markers. Generate real code based on the user's slice requirement."
         )
     )
 
@@ -317,6 +366,19 @@ async def main():
             "You verify code stability. Inspect the written structures and compilation terminal logs. "
             "If failures are apparent, issue code corrections back to the developer explicitly."
         )
+    )
+
+    formatter_agent = Agent(
+        client=local_coder_client,
+        name="FileBlockFormatter",
+        instructions=(
+            "You normalize raw coding output into strict deployable file blocks only. "
+            "Return only this format and nothing else:\n"
+            "--- FILE: relative/path/from/repo/root.ext ---\n"
+            "<full file contents>\n"
+            "--- END FILE ---\n"
+            "No prose, no analysis, no markdown headings."
+        ),
     )
 
     # Process outstanding array tasks sequentially
@@ -334,9 +396,18 @@ async def main():
         )
 
         initial_prompt = (
-            f"Please implement this vertical slice structure directly:\n\n"
+            f"Implement the following slice exactly.\n\n"
             f"{item['markdown_content']}\n\n"
-            f"Generate all necessary application files using the '--- FILE: path ---' boundary rule."
+            "Return only valid file blocks using this exact schema and nothing else:\n\n"
+            "--- FILE: relative/path/from/repo/root.ext ---\n"
+            "<full file contents here, without markdown fences>\n"
+            "--- END FILE ---\n\n"
+            "Rules:\n"
+            "1. Output only file blocks. No commentary, no explanation, no Markdown headings, no prose.\n"
+            "2. Each file must use the exact boundary markers shown above.\n"
+            "3. Do not wrap the file contents in triple backticks.\n"
+            "4. If there are multiple files, emit multiple blocks in sequence.\n"
+            "5. Use real code matching the slice requirements and project structure."
         )
 
         # 1. Trigger the collaborative Multi-Agent execution graph
@@ -349,14 +420,27 @@ async def main():
             continue
 
         final_message = ""
-
-        if hasattr(workflow_session, 'state') and 'messages' in workflow_session.state:
+        candidate_payloads: List[str] = []
+        messages_list = []
+        if hasattr(workflow_session, 'get_outputs'):
+            outputs = workflow_session.get_outputs()
+            if outputs:
+                messages_list = outputs
+                candidate_payloads.extend(
+                    extract_text_payload(output_item) for output_item in outputs
+                )
+        if not messages_list and hasattr(workflow_session, 'state') and 'messages' in workflow_session.state:
             messages_list = workflow_session.state['messages']
-        elif hasattr(workflow_session, 'messages'):
+        elif not messages_list and hasattr(workflow_session, 'messages'):
             messages_list = workflow_session.messages
-        else:
+        elif not messages_list:
             messages_list = getattr(
                 workflow_session, 'context', {}).get('messages', [])
+
+        if messages_list:
+            candidate_payloads.extend(
+                extract_text_payload(msg_item) for msg_item in messages_list
+            )
 
         print("\n--- [CONVERSATION TRAIL LOGS] ---")
         for msg in messages_list:
@@ -368,11 +452,31 @@ async def main():
             preview = content[:200].replace("\n", " ") if len(
                 content) > 200 else content.replace("\n", " ")
             print(f"🔹 [{author}]: {preview}...")
-            final_message = content
+            candidate_payloads.append(content)
         print("---------------------------------\n")
 
+        fallback_payload = extract_text_payload(workflow_session)
+        if fallback_payload:
+            candidate_payloads.append(fallback_payload)
+
+        final_message = choose_best_file_block_payload(candidate_payloads)
+
         if not final_message:
-            final_message = extract_text_payload(workflow_session)
+            print(
+                "[MAF] Primary payload had no deployable file blocks. Invoking formatter recovery agent...")
+            recovery_prompt = (
+                "Normalize the following raw output into valid file blocks only. "
+                "If code is incomplete, synthesize complete files from the slice requirements.\n\n"
+                f"Slice requirements:\n{item['markdown_content']}\n\n"
+                "Raw outputs:\n"
+                + "\n\n".join(candidate_payloads[-8:])
+            )
+            try:
+                formatter_session = await formatter_agent.run(recovery_prompt)
+                final_message = extract_text_payload(formatter_session)
+            except Exception as exc:
+                print(f"[MAF] Formatter recovery failed: {exc}")
+                final_message = ""
 
         # 3. Write files emitted by the agents to your real project disk
         print("[MAF] Extracting code payloads and writing to filesystem...")
@@ -382,7 +486,24 @@ async def main():
 
         if "Warning: No clean file structural syntax blocks matched or generated." in disk_report:
             print(
-                f"[MAF] No deployable files produced for slice {item['number']}. Skipping validation for this slice.")
+                "[MAF] First write pass failed. Requesting a second-pass formatter correction...")
+            retry_prompt = (
+                "Rewrite this into valid file blocks only using the exact required format.\n\n"
+                f"Slice requirements:\n{item['markdown_content']}\n\n"
+                f"Current output:\n{final_message}"
+            )
+            try:
+                formatter_retry_session = await formatter_agent.run(retry_prompt)
+                retry_message = extract_text_payload(formatter_retry_session)
+                disk_report = LocalWorkspaceTools.write_files_from_markdown(
+                    retry_message)
+                print(disk_report)
+            except Exception as exc:
+                print(f"[MAF] Formatter second pass failed: {exc}")
+
+        if "Warning: No clean file structural syntax blocks matched or generated." in disk_report:
+            print(
+                f"[MAF] No deployable files produced for slice {item['number']} after self-healing. Skipping validation for this slice.")
             continue
 
         # 4. Verification Checkpoint loop
@@ -404,22 +525,94 @@ async def main():
             print(
                 f"❌ Slice {item['number']} build failed integration testing checks. Initiating self-healing protocol...")
 
-            healing_prompt = f"Your latest files caused this test suite failure:\n{test_status}\nPlease rewrite them using the file blocks to fix the errors."
-            healing_session = await coder_agent.run(healing_prompt)
+            healed = False
+            latest_failure = test_status
 
-            healing_text_payload = extract_text_payload(healing_session)
-            LocalWorkspaceTools.write_files_from_markdown(healing_text_payload)
+            for attempt in range(1, MAX_HEALING_ITERATIONS + 1):
+                print(
+                    f"[MAF] Self-healing attempt {attempt}/{MAX_HEALING_ITERATIONS} for Slice {item['number']}...")
+                healing_prompt = (
+                    "You are fixing the same slice after failing tests. "
+                    "Return only strict file blocks and directly address this failure output.\n\n"
+                    f"Slice number: {item['number']}\n"
+                    f"Slice name: {item['name']}\n\n"
+                    "Latest failing test output:\n"
+                    f"{latest_failure}\n\n"
+                    "Required output format:\n"
+                    "--- FILE: relative/path/from/repo/root.ext ---\n"
+                    "<full file contents>\n"
+                    "--- END FILE ---"
+                )
 
-            final_check = LocalWorkspaceTools.run_tests()
-            if final_check == "PASS":
+                try:
+                    healing_session = await coder_agent.run(healing_prompt)
+                except Exception as exc:
+                    latest_failure = f"Developer healing agent failed to run: {exc}"
+                    print(f"[MAF] {latest_failure}")
+                    continue
+
+                healing_text_payload = extract_text_payload(healing_session)
+                healing_report = LocalWorkspaceTools.write_files_from_markdown(
+                    healing_text_payload)
+                print(healing_report)
+
+                if "Warning: No clean file structural syntax blocks matched or generated." in healing_report:
+                    formatter_prompt = (
+                        "Normalize this raw developer output into valid file blocks only.\n\n"
+                        f"Slice requirements:\n{item['markdown_content']}\n\n"
+                        f"Raw developer output:\n{healing_text_payload}"
+                    )
+                    try:
+                        formatter_session = await formatter_agent.run(formatter_prompt)
+                        formatted_payload = extract_text_payload(
+                            formatter_session)
+                        healing_report = LocalWorkspaceTools.write_files_from_markdown(
+                            formatted_payload)
+                        print(healing_report)
+                    except Exception as exc:
+                        print(
+                            f"[MAF] Formatter during self-healing failed: {exc}")
+
+                if "Warning: No clean file structural syntax blocks matched or generated." in healing_report:
+                    latest_failure = "Self-healing produced no deployable file blocks."
+                    continue
+
+                final_check = LocalWorkspaceTools.run_tests()
+                if final_check == "PASS":
+                    healed = True
+                    break
+
+                latest_failure = final_check
+
+            if healed:
                 print("✅ Self-healing loop successful! Slice verified.")
+                try:
+                    MarkdownPlanParser.mark_slice_complete(
+                        PLAN_FILE_PATH, item['number'])
+                except Exception:
+                    pass
                 repo_base = os.path.join(TARGET_PROJECT_PATH, "..")
                 commit_all_changes(
                     repo_base, f"maf-agent: slice {item['number']} self-healed and compiled")
             else:
-                print("🚨 Self-healing loop failed to resolve compiler errors. Halting overnight build pipeline to prevent cascading structural faults.")
-                print(final_check)
-                break
+                culprit = {
+                    "number": item["number"],
+                    "name": item["name"],
+                    "failure": latest_failure,
+                }
+                culprit_slices.append(culprit)
+                print(
+                    f"🚨 Slice {item['number']} exceeded self-healing limit ({MAX_HEALING_ITERATIONS}). "
+                    "Marking as culprit and continuing best-effort with remaining slices.")
+
+    if culprit_slices:
+        print("\n[MAF] Culprit slices requiring manual investigation:")
+        for culprit in culprit_slices:
+            snippet = str(culprit["failure"]).strip().replace("\n", " ")
+            if len(snippet) > 300:
+                snippet = snippet[:300] + "..."
+            print(
+                f" - Slice {culprit['number']} — {culprit['name']}: {snippet}")
 
 
 if __name__ == "__main__":

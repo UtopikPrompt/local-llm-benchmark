@@ -1,50 +1,85 @@
-"""SQLite storage layer for the benchmark backend."""
-
+"""SQLite persistence layer for benchmark run results."""
 from __future__ import annotations
 
 import sqlite3
-from typing import Iterator
+from pathlib import Path
+from typing import Any
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS runs (
-    run_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    run_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    engine TEXT,
-    model_id TEXT,
-    scenario TEXT
-);
+# Columns that SQLite derives automatically. They must not be supplied
+# explicitly to write_row(); attempting to do so is a programming error.
+_GENERATED_COLUMNS: set[str] = {"throughput_toks_s"}
+
+_CREATE_RESULTS_TABLE = """
+CREATE TABLE IF NOT EXISTS results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    model TEXT NOT NULL,
+    status TEXT NOT NULL,
+    input_tokens INTEGER NOT NULL,
+    output_tokens INTEGER NOT NULL,
+    latency_s REAL NOT NULL,
+    throughput_toks_s REAL AS (output_tokens / latency_s) STORED
+)
 """
 
 
-def get_connection(database_path: str) -> sqlite3.Connection:
-    """Return a :class:`sqlite3.Connection` to ``database_path``.
+def init_db(db_path: str | Path) -> None:
+    """Create the ``results`` table if it does not already exist."""
+    path = Path(db_path)
+    if path.parent and not path.parent.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
 
-    ``":memory:"` yields an in-process database (used by tests); a file path
-    yields a persistent database on disk.
-    """
-    conn = sqlite3.connect(database_path)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def init_db(database_path: str) -> None:
-    """Create the schema if it does not already exist."""
-    conn = get_connection(database_path)
+    conn = sqlite3.connect(path)
     try:
-        conn.executescript(SCHEMA)
+        conn.execute(_CREATE_RESULTS_TABLE)
         conn.commit()
     finally:
         conn.close()
 
 
-def connection_pool(database_path: str) -> Iterator[sqlite3.Connection]:
-    """Yield a fresh connection per caller.
+def write_row(db_path: str | Path, **columns: Any) -> int:
+    """Insert a single run into ``results`` and return its row id.
 
-    SQLite serializes writes, so opening a connection per operation keeps the
-    benchmark writer simple and avoids sharing a connection across threads.
+    Generated columns (e.g. ``throughput_toks_s``) must not be supplied
+    explicitly; SQLite derives them from latency and output tokens.
     """
-    conn = get_connection(database_path)
+    if not columns:
+        raise ValueError("write_row() requires at least one column value")
+
+    illegal = _GENERATED_COLUMNS.intersection(columns)
+    if illegal:
+        raise ValueError(
+            "cannot supply generated column(s) explicitly: "
+            + ", ".join(sorted(illegal))
+        )
+
+    names = tuple(columns)
+    placeholders = ", ".join("?" for _ in names)
+    quoted = ", ".join(f'"{name}"' for name in names)
+    sql = f"INSERT INTO results ({quoted}) VALUES ({placeholders})"
+
+    conn = sqlite3.connect(db_path)
     try:
-        yield conn
+        cursor = conn.execute(sql, tuple(columns[name] for name in names))
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
+
+
+def read_rows(
+    db_path: str | Path,
+    where: str = "",
+    params: tuple[Any, ...] = (),
+) -> list[dict[str, Any]]:
+    """Return result rows as a list of dictionaries."""
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.row_factory = sqlite3.Row
+        sql = "SELECT * FROM results"
+        args: list[Any] = []
+        if where:
+            sql += f" WHERE {where}"
+            args.extend(params)
+        return [dict(row) for row in conn.execute(sql, args)]
     finally:
         conn.close()

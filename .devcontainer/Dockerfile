@@ -1,4 +1,8 @@
-FROM mcr.microsoft.com/devcontainers/python:1.3-3.12
+FROM mcr.microsoft.com/devcontainers/python:3.14
+
+# Silence corepack's interactive npm download prompt so a non-interactive
+# `pnpm install` in the dev container's postCreateCommand cannot hang.
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
 # ---- Node.js 22 + tooling (installed inside the container only) ----
 RUN apt-get update \

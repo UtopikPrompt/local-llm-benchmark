@@ -1,37 +1,38 @@
 {
-    "name": "local-llm-benchmark",
-    "build": {
-        "dockerfile": "Dockerfile",
-        "context": ".."
-    },
-    "features": {
-        "ghcr.io/devcontainers/features/common-utils:2": {
-            "installZsh": true
-        }
-    },
-    "customizations": {
-        "vscode": {
-            "extensions": [
-                "ms-python.python",
-                "ms-python.vscode-pylance",
-                "ms-python.black-formatter",
-                "esbenp.prettier-vscode",
-                "dbaeumer.vscode-eslint",
-                "dbaeumer.vscode-jinja"
-            ],
-            "settings": {
-                "python.defaultInterpreterPath": "/usr/local/bin/python",
-                "python.terminal.activateEnvInCurrentTerminal": true,
-                "typescript.tsc.version": "auto",
-                "files.eol": "\n",
-                "editor.defaultFormatter": "esbenp.prettier-vscode"
-            }
-        }
-    },
-    "postCreateCommand": "pip3 install pip --upgrade; pnpm config set store-dir ~/.pnpm-store; pnpm install || true",
-    "forwardPorts": [
-        8000,
-        5173
-    ],
-    "remoteUser": "vscode"
+  "name": "local-llm-benchmark",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "dbaeumer.vscode-jinja",
+        "Ollama.ollama"
+      ],
+      "environmentVars": {
+        "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0"
+      },
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.terminal.activateEnvInCurrentTerminal": true,
+        "typescript.tsc.version": "auto",
+        "files.eol": "\n",
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+      }
+    }
+  },
+  "postCreateCommand": "pip3 install pip --upgrade; pnpm config set store-dir ~/.pnpm-store; pnpm approve-builds --all; pnpm install",
+  "forwardPorts": [8000, 5173],
+  "remoteUser": "vscode"
 }

@@ -1,85 +1,89 @@
-"""SQLite persistence layer for benchmark run results."""
+"""SQLite-backed persistence layer for benchmark runs."""
 from __future__ import annotations
 
-import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List, Union
 
-# Columns that SQLite derives automatically. They must not be supplied
-# explicitly to write_row(); attempting to do so is a programming error.
-_GENERATED_COLUMNS: set[str] = {"throughput_toks_s"}
+import sqlite3
 
-_CREATE_RESULTS_TABLE = """
-CREATE TABLE IF NOT EXISTS results (
+
+SCHEMA_SQL: str = """
+CREATE TABLE IF NOT EXISTS runs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
     model TEXT NOT NULL,
+    dataset TEXT NOT NULL,
+    total_tokens INTEGER NOT NULL,
+    duration_seconds REAL NOT NULL,
+    tokens_per_second REAL NOT NULL,
     status TEXT NOT NULL,
-    input_tokens INTEGER NOT NULL,
-    output_tokens INTEGER NOT NULL,
-    latency_s REAL NOT NULL,
-    throughput_toks_s REAL AS (output_tokens / latency_s) STORED
-)
+    created_at TEXT NOT NULL
+);
 """
 
 
-def init_db(db_path: str | Path) -> None:
-    """Create the ``results`` table if it does not already exist."""
-    path = Path(db_path)
-    if path.parent and not path.parent.exists():
-        path.parent.mkdir(parents=True, exist_ok=True)
-
-    conn = sqlite3.connect(path)
-    try:
-        conn.execute(_CREATE_RESULTS_TABLE)
-        conn.commit()
-    finally:
-        conn.close()
+def _connect(db_path: Union[str, Path]) -> sqlite3.Connection:
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
-def write_row(db_path: str | Path, **columns: Any) -> int:
-    """Insert a single run into ``results`` and return its row id.
+def init_db(db_path: Union[str, Path]) -> sqlite3.Connection:
+    conn = _connect(db_path)
+    conn.executescript(SCHEMA_SQL)
+    conn.commit()
+    return conn
 
-    Generated columns (e.g. ``throughput_toks_s``) must not be supplied
-    explicitly; SQLite derives them from latency and output tokens.
-    """
-    if not columns:
-        raise ValueError("write_row() requires at least one column value")
 
-    illegal = _GENERATED_COLUMNS.intersection(columns)
-    if illegal:
-        raise ValueError(
-            "cannot supply generated column(s) explicitly: "
-            + ", ".join(sorted(illegal))
+def write_run(
+    conn: sqlite3.Connection,
+    *,
+    run_id: str,
+    model: str,
+    dataset: str,
+    total_tokens: int,
+    duration_seconds: float,
+    status: str = "completed",
+) -> int:
+    if duration_seconds > 0:
+        throughput = total_tokens / duration_seconds
+    else:
+        throughput = 0.0
+
+    cursor = conn.execute(
+        """
+        INSERT INTO runs (
+            run_id,
+            model,
+            dataset,
+            total_tokens,
+            duration_seconds,
+            tokens_per_second,
+            status,
+            created_at
         )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            run_id,
+            model,
+            dataset,
+            total_tokens,
+            duration_seconds,
+            throughput,
+            status,
+            datetime.now(timezone.utc).isoformat(),
+        ),
+    )
+    conn.commit()
+    return cursor.lastrowid
 
-    names = tuple(columns)
-    placeholders = ", ".join("?" for _ in names)
-    quoted = ", ".join(f'"{name}"' for name in names)
-    sql = f"INSERT INTO results ({quoted}) VALUES ({placeholders})"
 
-    conn = sqlite3.connect(db_path)
-    try:
-        cursor = conn.execute(sql, tuple(columns[name] for name in names))
-        conn.commit()
-        return cursor.lastrowid
-    finally:
-        conn.close()
-
-
-def read_rows(
-    db_path: str | Path,
-    where: str = "",
-    params: tuple[Any, ...] = (),
-) -> list[dict[str, Any]]:
-    """Return result rows as a list of dictionaries."""
-    conn = sqlite3.connect(db_path)
-    try:
-        conn.row_factory = sqlite3.Row
-        sql = "SELECT * FROM results"
-        args: list[Any] = []
-        if where:
-            sql += f" WHERE {where}"
-            args.extend(params)
-        return [dict(row) for row in conn.execute(sql, args)]
-    finally:
-        conn.close()
+def read_all_runs(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
+    cursor = conn.execute(
+        """
+        SELECT * FROM runs ORDER BY id
+        """
+    )
+    return [dict(row) for row in cursor.fetchall()]

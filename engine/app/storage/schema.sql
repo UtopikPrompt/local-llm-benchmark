@@ -1,22 +1,23 @@
--- results table for engine runs (design §7)
+-- Slice 3 storage schema for the inference run `results` table.
+-- `throughput_toks_s` is a generated column: it is never written by the
+-- caller and is always derived as output_tokens / latency.
+
 CREATE TABLE IF NOT EXISTS results (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    run_at TEXT NOT NULL DEFAULT (datetime('now')),
+    run_id TEXT NOT NULL,
     model TEXT NOT NULL,
-    status TEXT NOT NULL,
-    input_tokens INTEGER NOT NULL,
+    tokenizer TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    prompt_tokens INTEGER NOT NULL,
     output_tokens INTEGER NOT NULL,
-    latency_s REAL NOT NULL,
-    throughput_toks_s REAL GENERATED ALWAYS AS (
-        CASE
-            WHEN latency_s > 0 THEN CAST(output_tokens AS REAL) / latency_s
-            ELSE 0
-        END
-    ) STORED,
-    prompt TEXT,
-    response TEXT
+    latency REAL NOT NULL,
+    ttfb REAL NOT NULL,
+    throughput_toks_s REAL GENERATED ALWAYS AS (output_tokens / latency),
+    system_prompt TEXT NOT NULL,
+    seed INTEGER,
+    temperature REAL,
+    max_tokens INTEGER
 );
 
+CREATE INDEX IF NOT EXISTS idx_results_run_id ON results (run_id);
 CREATE INDEX IF NOT EXISTS idx_results_model ON results (model);
-CREATE INDEX IF NOT EXISTS idx_results_status ON results (status);
-CREATE INDEX IF NOT EXISTS idx_results_run_at ON results (run_at);

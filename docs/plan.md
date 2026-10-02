@@ -16,12 +16,14 @@
 ## Build state (verified 2026-10-02)
 
 - **Design doc:** finalized, source of truth.
-- **Source code:** **none present.** The engine contains only `pyproject.toml`,
-  `app/__init__.py` (empty), an `egg-info`, and pytest cache. The prior
-  `app/main.py` and `tests/test_orchestrator.py` were deleted in
-  `e1450b6`. No `apps/dashboard`, no `packages/shared`.
-- **Repo is greenfield.** Treat every slice as new code, verified by a passing
-  test or a live endpoint before moving on.
+- **Completed:** Slice 0 (foundation scaffold) and **Slice 1 (engine adapter +
+  Ollama)** are implemented and green — `EngineAdapter` base + Ollama adapter in
+  `engine/app/engines/`, covered by `engine/tests/test_ollama_engine.py`
+  (13 passing, 1 manual live-Ollama skip).
+- **Source code:** no `apps/dashboard`, no `packages/shared`. Everything below
+  Slice 1 is still to come.
+- **Repo is greenfield past Slice 1.** Treat each remaining slice as new code,
+  verified by a passing test or a live endpoint before moving on.
 
 ---
 

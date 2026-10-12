@@ -2,7 +2,7 @@ name: Send to Orchestrator
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [opened, reopened, labeled]
   pull_request:
     types: [opened, synchronize]
   workflow_dispatch:

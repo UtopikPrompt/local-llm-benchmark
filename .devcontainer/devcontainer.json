@@ -8,9 +8,6 @@
     "ghcr.io/devcontainers/features/python:1": {},
     "ghcr.io/va-h/devcontainers-features/uv:1": {}
   },
-  "remoteEnv": {
-    "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
-  },
   "customizations": {
     "vscode": {
       "extensions": [

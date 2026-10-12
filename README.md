@@ -1,7 +1,7 @@
 # local-llm-benchmark
 
 A monorepo for benchmarking **LLM inference engines** (Ollama, LM Studio) by
-running the *same model* through each engine and measuring the engine's effect
+running the _same model_ through each engine and measuring the engine's effect
 on **quality** (LLM-as-judge) and **speed** (latency / throughput) independently.
 
 ## Goal
@@ -45,7 +45,7 @@ local-llm-benchmark/
 ## Getting started
 
 This project is developed inside the VS Code **dev container**, which installs
-Node 22 and Python 3.12 inside the container only (the host stays clean).
+Node and Python 3.12 inside the container only (the host stays clean).
 
 1. Open the repository in VS Code.
 2. When prompted, click **Reopen in Container** (or run
@@ -95,3 +95,19 @@ engines in the set:
 - **Speed:** lower latency / higher throughput is a positive effect.
 
 See `docs/llm_benchmark_design.md` for the finalized design.
+
+## Agent orchestration
+
+This repo is orchestrated with [Bernstein](https://github.com/sipyourdrink-ltd/bernstein),
+the open-source governance layer for AI coding agents. It is installed in the
+dev container via `pipx` and drives the CLI coding agents.
+
+```bash
+# Inside the dev container:
+bernstein --version      # installed by the postCreateCommand
+bernstein doctor         # check the setup end to end
+bernstein -g "add a scenario fixture"   # spawn agents, verify, exit
+```
+
+Run state lives in `.sdd/` (git-ignored). Each coding task runs in its own git
+worktree behind merge gates, so the main branch stays clean.

@@ -21,5 +21,9 @@ dist/
 /logs/
 .env
 
-# ---- Lockfiles tracked in repo (keep pnpm + pip lockfiles out of venv) ----
-# pnpm-lock.yaml and poetry.lock are version-controlled; venvs are not
+# ---- Bernstein run state ----
+.sdd/
+
+# ---- Lockfiles tracked in repo (keep pnpm lockfiles out of venv) ----
+# pnpm-lock.yaml is version-controlled; venvs are not
+.sdd/runtime/

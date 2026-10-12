@@ -5,34 +5,38 @@
     "context": ".."
   },
   "features": {
-    "ghcr.io/devcontainers/features/common-utils:2": {
-      "installZsh": true
-    }
+    "ghcr.io/devcontainers/features/python:1": {},
+    "ghcr.io/va-h/devcontainers-features/uv:1": {}
+  },
+  "remoteEnv": {
+    "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
   },
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-python.python",
         "ms-python.vscode-pylance",
-        "ms-python.black-formatter",
-        "esbenp.prettier-vscode",
+        "charliermarsh.ruff",
         "dbaeumer.vscode-eslint",
-        "dbaeumer.vscode-jinja",
-        "Ollama.ollama"
+        "Ollama.ollama",
+        "alex-chernysh.bernstein"
       ],
-      "environmentVars": {
-        "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0"
-      },
       "settings": {
         "python.defaultInterpreterPath": "/usr/local/bin/python",
         "python.terminal.activateEnvInCurrentTerminal": true,
-        "typescript.tsc.version": "auto",
-        "files.eol": "\n",
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
+        "files.eol": "\n"
       }
     }
   },
-  "postCreateCommand": "pip3 install pip --upgrade; pnpm config set store-dir ~/.pnpm-store; pnpm approve-builds --all; pnpm install",
-  "forwardPorts": [8000, 5173],
-  "remoteUser": "vscode"
+  "postCreateCommand": "uv tool install bernstein && uv tool install aider-chat",
+  "forwardPorts": [
+    8000,
+    5173,
+    8052
+  ],
+  "remoteUser": "vscode",
+  "runArgs": [
+    "--env-file",
+    ".devcontainer/.env"
+  ]
 }

@@ -1,0 +1,22 @@
+# Bernstein orchestration config
+# Uncomment and edit the goal, then run: bernstein
+
+goal: "Reply with exactly: BERNSTEIN_OLLAMA_OK"
+
+cli: ollama
+team: auto
+budget: "$10"
+
+# Pin the model for every role so bernstein does not escalate to the
+# Claude "opus" tier name (which the Ollama adapter cannot serve).
+role_model_policy:
+  default:
+    model: ornith-ai-ornith-1.5-35b-q4_k_m:latest
+
+# Local Ollama endpoint (remote host ollama.utopiklab.lan)
+local_endpoints:
+  ollama-local:
+    base_url: http://ollama.utopiklab.lan:11434/v1
+    model: ornith-ai-ornith-1.5-35b-q4_k_m:latest
+    engine: ollama
+    timeout: 120.0

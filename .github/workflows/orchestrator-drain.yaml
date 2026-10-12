@@ -1,0 +1,47 @@
+name: Send to Orchestrator
+
+on:
+  issues:
+    types: [opened, labeled]
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+
+jobs:
+  send-to-orchestrator:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract task info
+        id: task-info
+        run: |
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            TASK_ID="${{ github.event.issue.number }}"
+            ISSUE_TITLE="${{ github.event.issue.title }}"
+            ISSUE_URL="${{ github.event.issue.html_url }}"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            TASK_ID="${{ github.event.pull_request.number }}"
+            ISSUE_TITLE="${{ github.event.pull_request.title }}"
+            ISSUE_URL="${{ github.event.pull_request.html_url }}"
+          else
+            exit 1
+          fi
+          echo "task_id=$TASK_ID" >> $GITHUB_OUTPUT
+          echo "issue_title=$ISSUE_TITLE" >> $GITHUB_OUTPUT
+          echo "issue_url=$ISSUE_URL" >> $GITHUB_OUTPUT
+      
+      - name: Send task to orchestrator
+        env:
+          ORCHESTRATOR_URL: ${{ secrets.ORCHESTRATOR_URL }}
+          ORCHESTRATOR_TOKEN: ${{ secrets.ORCHESTRATOR_TOKEN }}
+        run: |
+          curl -X POST "$ORCHESTRATOR_URL" \
+            -H "Authorization: token $ORCHESTRATOR_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"task_id\": \"${{ steps.task-info.outputs.task_id }}\",
+              \"repo\": \"${{ github.repository }}\",
+              \"issue_number\": ${{ steps.task-info.outputs.task_id }},
+              \"issue_title\": \"${{ steps.task-info.outputs.issue_title }}\",
+              \"issue_url\": \"${{ steps.task-info.outputs.issue_url }}\"
+            }"
+            

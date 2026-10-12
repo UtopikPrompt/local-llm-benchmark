@@ -12,10 +12,12 @@ Repository conventions for coding agents. The source of truth for the design is
 
 ## Environment
 
-- Develop inside the VS Code **dev container** (`.devcontainer/`). Node 22 +
+- Develop inside the VS Code **dev container** (`.devcontainer/`). Node and
   Python 3.12 live inside the container only; the host is left untouched.
 - `.python-version` pins the interpreter to 3.12.
-- `pnpm-lock.yaml` and `poetry.lock` are version-controlled; virtualenvs are not.
+- `pnpm-lock.yaml` is version-controlled; virtualenvs are not.
+- Bernstein is installed via `pipx` in the container (`bernstein --version` in
+  the postCreate command). See the README for orchestration commands.
 
 ## Commands
 
@@ -35,7 +37,6 @@ cd apps/dashboard
 pnpm install
 pnpm dev                            # vite on :5173
 pnpm build                          # tsc -b && vite build
-pnpm lint
 pnpm test                           # vitest run
 ```
 

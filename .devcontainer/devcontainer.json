@@ -1,0 +1,39 @@
+{
+  "name": "local-llm-benchmark",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {},
+    "ghcr.io/va-h/devcontainers-features/uv:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "dbaeumer.vscode-eslint",
+        "Ollama.ollama",
+        "alex-chernysh.bernstein"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.terminal.activateEnvInCurrentTerminal": true,
+        "files.eol": "\n"
+      }
+    }
+  },
+  "postCreateCommand": "uv tool install bernstein && uv tool install aider-chat",
+  "forwardPorts": [
+    8000,
+    5173,
+    8052
+  ],
+  "remoteUser": "vscode",
+  "runArgs": [
+    "--env-file",
+    ".devcontainer/.env"
+  ]
+}

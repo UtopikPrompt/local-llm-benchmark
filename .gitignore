@@ -1,0 +1,29 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# ---- Node ----
+node_modules/
+dist/
+.viteer/
+.next/
+*.tsbuildinfo
+
+# ---- Local state ----
+*.sqlite
+*.db
+/data/*.sqlite
+/logs/
+.env
+
+# ---- Bernstein run state ----
+.sdd/
+
+# ---- Lockfiles tracked in repo (keep pnpm lockfiles out of venv) ----
+# pnpm-lock.yaml is version-controlled; venvs are not
+.sdd/runtime/

@@ -53,7 +53,7 @@ permissions:
   issues: write
 
 jobs:
-  drain:
+  send-to-orchestrator:
     runs-on: ubuntu-latest
 
     steps:
@@ -62,8 +62,8 @@ jobs:
         with:
           script: |
             const issue = context.issue;
-            await github.actions.status({
-              state: "in_progress",
+            await github.rest.createStatus({
+              state: "open",
               description: `Autonomous drain pass for issue #${issue.number} (title: "${issue.title}").`,
             });
 
@@ -193,8 +193,8 @@ jobs:
             const ok = process.exitCode === 0;
             const description = `🤖 Autonomous drain pass for issue #${issue.number}: ` +
               (ok ? 'PR opened — awaiting your review.' : 'FAILED — see the job logs for details.');
-            await github.actions.status({
-              state: ok ? "success" : "failure",
+            await github.rest.createStatus({
+              state: ok ? "completed" : "open",
               target_url: issue.html_url,
               description,
             });

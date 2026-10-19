@@ -42,7 +42,7 @@ name: Autonomous drain loop
 
 on:
   issues:
-    types: [ opened, reopened, assigned ]
+    types: [opened, reopened, assigned]
 
 # Scoped permissions — NOT a free-for-all PAT. The workflow operates on the
 # implicit machine token GitHub issues these on; no RUNNER_TOKEN secret is
@@ -57,6 +57,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Start status check
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const issue = context.issue;
+          await github.actions.status({
+            state: "in_progress",
+            description: `Autonomous drain pass for issue #${issue.number} (title: "${issue.title}").`,
+          });
+
     - name: Check issue state
       # Guard: skip if the issue is already `done` (mid-flight or completed).
       # This is the event-level dedup for the kill-switch.
@@ -125,12 +135,12 @@ jobs:
           -H "Authorization: token $ORCHESTRATOR_TOKEN" \
           -H "Content-Type: application/json" \
           -d "{\"name\":\"orchestrator-agent\",\"ref\":\"${REF}\",\"payload\":{\"issue_number\":${ISSUE_NUM},\"issue_title\":\"${ISSUE_TITLE}\",\"issue_url\":\"${ISSUE_URL}\",\"repo\":\"${REPO}\",\"default_branch\":\"${{ github.event.repository.default_branch }}\"}}")
-        
+
         echo "Spawn response: $RESPONSE"
-        
+
         # The orchestrator returns a Job UID; poll its status (see next step).
         JOB_UID=$(echo "$RESPONSE" | jq -r '.uid // empty')
-        
+
         echo "JOB_UID=${JOB_UID}" >> "$GITHUB_OUTPUT"
 
     - name: Wait for PR
@@ -173,3 +183,18 @@ jobs:
           } catch (e) {
             core.setFailed(e.message);
           }
+
+    - name: Set drain status
+      if: always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const issue = context.issue;
+          const ok = process.exitCode === 0;
+          const description = `🤖 Autonomous drain pass for issue #${issue.number}: ` +
+            (ok ? 'PR opened — awaiting your review.' : 'FAILED — see the job logs for details.');
+          await github.actions.status({
+            state: ok ? "success" : "failure",
+            target_url: issue.html_url,
+            description,
+          });

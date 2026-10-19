@@ -62,7 +62,8 @@ jobs:
         with:
           script: |
             const issue = context.issue;
-            await github.rest.createStatus({
+            await github.rest.create({
+              route: 'issues/${issue_number}/statuses',
               state: "open",
               description: `Autonomous drain pass for issue #${issue.number} (title: "${issue.title}").`,
             });
@@ -193,7 +194,8 @@ jobs:
             const ok = process.exitCode === 0;
             const description = `🤖 Autonomous drain pass for issue #${issue.number}: ` +
               (ok ? 'PR opened — awaiting your review.' : 'FAILED — see the job logs for details.');
-            await github.rest.createStatus({
+            await github.rest.create({
+              route: 'issues/${issue_number}/statuses',
               state: ok ? "completed" : "open",
               target_url: issue.html_url,
               description,

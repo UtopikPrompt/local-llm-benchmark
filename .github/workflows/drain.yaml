@@ -57,43 +57,43 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Start status check
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const issue = context.issue;
-            await github.request('issues/${issue_number}/statuses', {
-              method: 'post',
-              data: {
-                state: "open",
-                description: `Autonomous drain pass for issue #${issue.number} (title: "${issue.title}").`,
-              },
-            });
+      # - name: Start status check
+      #   uses: actions/github-script@v7
+      #   with:
+      #     script: |
+      #       const issue = context.issue;
+      #       await github.request('issues/${issue_number}/statuses', {
+      #         method: 'post',
+      #         data: {
+      #           state: "open",
+      #           description: `Autonomous drain pass for issue #${issue.number} (title: "${issue.title}").`,
+      #         },
+      #       });
 
-      - name: Check issue state
-        # Guard: skip if the issue is already `done` (mid-flight or completed).
-        # This is the event-level dedup for the kill-switch.
-        id: issue-state
-        uses: actions/github-script@v7
-        with:
-          script: |
-            try {
-              const { data: label } = await github.rest.issues.listLabelsOnIssue({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-              });
-              if (label.some(l => l.name === "done")) {
-                core.info(`Issue #${context.issue.number} already marked "done" — skipping this run.`);
-                core.setOutput("skip", "true");
-              }
-            } catch (e) {
-              core.setFailed(e.message);
-            }
+      # - name: Check issue state
+      #   # Guard: skip if the issue is already `done` (mid-flight or completed).
+      #   # This is the event-level dedup for the kill-switch.
+      #   id: issue-state
+      #   uses: actions/github-script@v7
+      #   with:
+      #     script: |
+      #       try {
+      #         const { data: label } = await github.rest.issues.listLabelsOnIssue({
+      #           owner: context.repo.owner,
+      #           repo: context.repo.repo,
+      #           issue_number: context.issue.number,
+      #         });
+      #         if (label.some(l => l.name === "done")) {
+      #           core.info(`Issue #${context.issue.number} already marked "done" — skipping this run.`);
+      #           core.setOutput("skip", "true");
+      #         }
+      #       } catch (e) {
+      #         core.setFailed(e.message);
+      #       }
 
-      - name: Skip if already done
-        if: steps.issue-state.outputs.skip == 'true'
-        run: exit 0
+      # - name: Skip if already done
+      #   if: steps.issue-state.outputs.skip == 'true'
+      #   run: exit 0
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -187,20 +187,20 @@ jobs:
               core.setFailed(e.message);
             }
 
-      - name: Set drain status
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const issue = context.issue;
-            const ok = process.exitCode === 0;
-            const description = `🤖 Autonomous drain pass for issue #${issue.number}: ` +
-              (ok ? 'PR opened — awaiting your review.' : 'FAILED — see the job logs for details.');
-            await github.request('issues/${issue_number}/statuses', {
-              method: 'post',
-              data: {
-                state: ok ? "completed" : "open",
-                target_url: issue.html_url,
-                description,
-              },
-            });
+      # - name: Set drain status
+      #   if: always()
+      #   uses: actions/github-script@v7
+      #   with:
+      #     script: |
+      #       const issue = context.issue;
+      #       const ok = process.exitCode === 0;
+      #       const description = `🤖 Autonomous drain pass for issue #${issue.number}: ` +
+      #         (ok ? 'PR opened — awaiting your review.' : 'FAILED — see the job logs for details.');
+      #       await github.request('issues/${issue_number}/statuses', {
+      #         method: 'post',
+      #         data: {
+      #           state: ok ? "completed" : "open",
+      #           target_url: issue.html_url,
+      #           description,
+      #         },
+      #       });

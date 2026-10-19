@@ -42,7 +42,7 @@ name: Autonomous drain loop
 
 on:
   issues:
-    types: [ opened, assigned ]
+    types: [ opened, reopened, assigned ]
 
 # Scoped permissions — NOT a free-for-all PAT. The workflow operates on the
 # implicit machine token GitHub issues these on; no RUNNER_TOKEN secret is

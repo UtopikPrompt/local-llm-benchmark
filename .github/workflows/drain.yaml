@@ -52,15 +52,9 @@ permissions:
   actions: write
   issues: write
 
-concurrency:
-  # Let one pass per issue complete before another event for the same issue
-  # re-queues it (dedup on the issue level).
-  group: autonomous-drain-${{ github.event.issue.number }}
-  cancel-in-progress: false
-
 jobs:
   drain:
-    runs-on: { group: autonomous }
+    runs-on: ubuntu-latest
 
     steps:
     - name: Check issue state

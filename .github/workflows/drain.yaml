@@ -32,9 +32,9 @@ jobs:
       - name: POST task to orchestrator
         if: steps.issue-state.outputs.skip != 'true'
         env:
-          GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
-          GATEWAY_AUTH_TOKEN: ${{ secrets.GATEWAY_AUTH_TOKEN }}
-          TASK_REPOSITORY_TOKEN: ${{ secrets.TASK_REPOSITORY_TOKEN }}
+          CODEFACTORY_URL: ${{ secrets.CODEFACTORY_URL }}
+          CODEFACTORY_AUTH_TOKEN: ${{ secrets.CODEFACTORY_AUTH_TOKEN }}
+          REPO_GITHUB_PAT: ${{ secrets.REPO_GITHUB_PAT }}
         shell: python
         run: |
           import json
@@ -43,14 +43,14 @@ jobs:
           import urllib.request
           from urllib.parse import urlsplit
 
-          url = os.environ["GATEWAY_URL"]
-          gateway_token = os.environ["GATEWAY_AUTH_TOKEN"]
-          repository_token = os.environ["TASK_REPOSITORY_TOKEN"]
+          url = os.environ["CODEFACTORY_URL"]
+          gateway_token = os.environ["CODEFACTORY_AUTH_TOKEN"]
+          repository_token = os.environ["REPO_GITHUB_PAT"]
           parsed = urlsplit(url)
           if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
                   or parsed.query or parsed.fragment or parsed.path not in ("", "/")
                   or "\\" in url or any(ord(character) <= 32 for character in url)):
-              raise SystemExit("GATEWAY_URL must be an HTTPS base URL without a path, query or fragment")
+              raise SystemExit("CODEFACTORY_URL must be an HTTPS base URL without a path, query or fragment")
           url = parsed._replace(path="/api/v1/tasks/spawn").geturl()
           if not gateway_token or not repository_token or gateway_token == repository_token:
               raise SystemExit("Distinct gateway and source-repository secrets are required")

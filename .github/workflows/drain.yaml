@@ -40,6 +40,7 @@ jobs:
           import json
           import os
           import re
+          import urllib.error
           import urllib.request
           from urllib.parse import urlsplit
 
@@ -79,6 +80,8 @@ jobs:
               task_id = result.get("task_id", "")
               if not re.fullmatch(r"issue-[a-f0-9]{32}", task_id) or result.get("status") not in ("running", "completed"):
                   raise ValueError("Invalid task acknowledgement")
+          except urllib.error.HTTPError as error:
+              raise SystemExit("Task intake failed: HTTP " + str(error.code)) from None
           except (OSError, ValueError, TypeError, AttributeError):
               raise SystemExit("Task intake failed; check transport, access and gateway task state") from None
           print("Task accepted: " + task_id)

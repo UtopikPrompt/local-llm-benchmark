@@ -97,7 +97,27 @@ jobs:
                   if not re.fullmatch(r"issue-[a-f0-9]{32}", task_id) or result.get("status") not in ("queued", "running", "completed"):
                       raise ValueError("Invalid task acknowledgement")
           except urllib.error.HTTPError as error:
-              raise SystemExit("Task intake failed: HTTP " + str(error.code)) from None
+              message = "Task intake failed: HTTP " + str(error.code)
+              if error.code == 409:
+                try:
+                  raw = error.read(1048577)
+                  conflict = json.loads(raw) if len(raw) <= 1048576 else {}
+                  reasons = {
+                    "retry-already-created", "retry-requires-failed-task",
+                    "retry-requires-lifecycle-sync", "issue-task-active",
+                  }
+                  if isinstance(conflict, dict):
+                    reason = conflict.get("error")
+                    if isinstance(reason, str) and reason in reasons:
+                      message += ": " + reason
+                    elif conflict.get("status") == "failed" and conflict.get("replayed") is True:
+                      message += ": failed-task-replay"
+                    conflict_task = conflict.get("task_id")
+                    if isinstance(conflict_task, str) and re.fullmatch(r"issue-[a-f0-9]{32}", conflict_task):
+                      message += " task_id=" + conflict_task
+                except (OSError, ValueError, TypeError):
+                  pass
+              raise SystemExit(message) from None
           except (OSError, ValueError, TypeError, AttributeError):
               raise SystemExit("Task intake failed; check transport, access and gateway task state") from None
           print("Task accepted: " + task_id)

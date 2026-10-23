@@ -125,14 +125,16 @@ jobs:
                       raise ValueError("Invalid task acknowledgement")
           except urllib.error.HTTPError as error:
               message = "Task intake failed: HTTP " + str(error.code)
-              if error.code in (400, 409):
+              if error.code in (400, 403, 409):
                 try:
                   raw = error.read(1048577)
                   conflict = json.loads(raw) if len(raw) <= 1048576 else {}
-                  reasons = {"repository-token-header-unsupported", "invalid-task-or-result"} if error.code == 400 else {
-                    "retry-already-created", "retry-requires-failed-task",
-                    "retry-requires-lifecycle-sync", "issue-task-active",
-                  }
+                  reasons = {
+                    400: {"repository-token-header-unsupported", "invalid-task-or-result"},
+                    403: {"repository-not-authorized", "repository-mismatch", "task-authentication-unsupported"},
+                    409: {"retry-already-created", "retry-requires-failed-task",
+                          "retry-requires-lifecycle-sync", "issue-task-active"},
+                  }[error.code]
                   if isinstance(conflict, dict):
                     reason = conflict.get("error")
                     if isinstance(reason, str) and reason in reasons:

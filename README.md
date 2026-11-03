@@ -25,13 +25,13 @@ local-llm-benchmark/
 │   └── shared/                   # (Optional) shared TypeScript types
 ├── engine/                       # Python backend: FastAPI + orchestrator
 │   ├── app/
-│   │   ├── main.py               # FastAPI entrypoint + routes
-│   │   ├── core/                 # Config, logging, engine-effect recommendations
-│   │   ├── engines/              # Engine adapter interface + Ollama + LM Studio
-│   │   ├── orchestrator/         # Runs the engine × model × scenario matrix
-│   │   ├── scoring/              # Deterministic checks + LLM-as-judge pipeline
-│   │   ├── storage/              # SQLite schema + writer
-│   │   └── scenarios/            # Scenario definitions + fixtures
+│   │   −── main.py               # FastAPI entrypoint + routes
+│   │   −── core/                 # Config, logging, engine-effect recommendations
+│   │   −── engines/              # Engine adapter interface + Ollama + LM Studio
+│   │   −── orchestrator/         # Runs the engine × model × scenario matrix
+│   │   −── scoring/              # Deterministic checks + LLM-as-judge pipeline
+│   │   −── storage/              # SQLite schema + writer
+│   │   −── scenarios/            # Scenario definitions + fixtures
 │   ├── tests/
 │   ├── pyproject.toml
 │   └── README.md
@@ -111,3 +111,5 @@ bernstein -g "add a scenario fixture"   # spawn agents, verify, exit
 
 Run state lives in `.sdd/` (git-ignored). Each coding task runs in its own git
 worktree behind merge gates, so the main branch stays clean.
+
+###### Hello World!
